@@ -1,15 +1,54 @@
-# 🚀 Bem-vindo à sua Trilha de Sucesso, Atendente!
+# 🚀 Manual de Excelência em Atendimento
 
-Aqui você manda no seu progresso. Conforme você for lendo os materiais e assistindo aos vídeos nas abas laterais, marque o seu progresso abaixo para não se perder! 📈
+Bem-vindo ao Guia Definitivo do Analista Quero Passagem! Aqui você encontra todas as diretrizes operacionais, normas ANTT e protocolos do sistema CMS para garantir um atendimento padrão ouro.
 
-### 🎯 Minha Jornada de Onboarding
-- [ ] 🟦 **Módulo 1:** Entender a Voz da Marca e Postura com o Cliente[cite: 1]
-- [ ] 💳 **Módulo 2:** Dominar prazos de Pix, Boleto e Cartão[cite: 1]
-- [ ] 🔄 **Módulo 3:** Gravar os prazos de cancelamento de SP, MG e MS[cite: 1]
-- [ ] 💻 **Módulo 4:** Fazer o primeiro login simulado no Rodon B2B[cite: 2]
-- [ ] 🛋️ **Módulo 5:** Conhecer as novas regras da Sala VIP do Tietê[cite: 1]
+## 🧠 Os 5 Pilares do Atendimento
+Clique em cada pilar para ver nossa diretriz de foco:
+
+<details>
+<summary><b>💬 1. Escuta Ativa</b></summary>
+Ouvir além das palavras. Prestar total atenção à linguagem e contexto para garantir a compreensão mútua antes de agir.
+</details>
+
+<details>
+<summary><b>🤝 2. Empatia</b></summary>
+Conexão genuína. Validar as frustrações do cliente e demonstrar solidariedade, transformando atrito em colaboração.
+</details>
+
+<details>
+<summary><b>⚡ 3. Inteligência Emocional</b></summary>
+Regulação e foco. Manter a calma, a clareza e o profissionalismo absoluto mesmo em interações tensas[cite: 2].
+</details>
+
+<details>
+<summary><b>⏳ 4. Paciência</b></summary>
+O tempo da resolução. Dedicar o tempo necessário para entender o problema por completo, sem apressar o encerramento[cite: 2].
+</details>
+
+<details>
+<summary><b>🎯 5. Comunicação Assertiva</b></summary>
+Clareza sem dúvidas. Traduzir regras e processos complexos em instruções simples, objetivas e eficientes[cite: 2].
+</details>
 
 ---
 
-### 🔥 Desafio do Dia
-> **Dica de Ouro:** Teve dúvida sobre uma taxa de conveniência? Lembre-se de que ela não é reembolsável, mas dê o gancho da recompra em até 24 horas para encantar o cliente! 🧠💙
+## 🛡️ O Método 3D: Revertendo Clientes Atritados
+Utilize este fluxo para desarmar clientes insatisfeitos[cite: 2]:
+
+1. **Desarmar:** Pratique empatia ativa e peça desculpas genuínas[cite: 2].
+   * *Script:* "Sinto muito que isso tenha acontecido e peço desculpas. Quero entender como posso te ajudar..."[cite: 2]
+2. **Diagnosticar:** Faça perguntas investigativas para entender a raiz do problema após acalmar a situação[cite: 2].
+   * *Script:* "Para que eu possa focar na resolução rápida, você poderia me detalhar o que ocorreu no guichê?"[cite: 2]
+3. **Descrever:** Confirme o entendimento resumindo a história do cliente para evitar ruídos[cite: 2].
+   * *Script:* "Sr./Sra., o que eu entendi foi [Resumo]... Procede? É isso mesmo?"[cite: 2]
+
+---
+
+## ⏱️ Roteiro de Comunicação e Inatividade
+Sempre siga o fluxo de tempo abaixo caso o cliente pare de responder no chat (Regra dos 3 Minutos)[cite: 2]:
+
+![Roteiro de Inatividade](image_818749.jpg)
+
+*   **Ausência I:** Cliente não respondeu à saudação inicial ➔ **Encerrar chamado** ➔ Tabulação: *Cliente Inativo após envio do primeiro contato*[cite: 2].
+*   **Ausência II:** Enviar *"Olá, ainda precisa de ajuda?"* ➔ Tabulação: *INATIVIDADE DO CLIENTE (Solicitação não atendida)*[cite: 2].
+*   **Ausência III:** Cliente sumiu no final após início ou atendimento ➔ Tabulação: *De acordo com o assunto (Solicitação atendida)*[cite: 2].
