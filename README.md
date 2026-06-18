@@ -52,3 +52,11 @@ Sempre siga o fluxo de tempo abaixo caso o cliente pare de responder no chat (Re
 *   **Ausência I:** Cliente não respondeu à saudação inicial ➔ **Encerrar chamado** ➔ Tabulação: *Cliente Inativo após envio do primeiro contato*[cite: 2].
 *   **Ausência II:** Enviar *"Olá, ainda precisa de ajuda?"* ➔ Tabulação: *INATIVIDADE DO CLIENTE (Solicitação não atendida)*[cite: 2].
 *   **Ausência III:** Cliente sumiu no final após início ou atendimento ➔ Tabulação: *De acordo com o assunto (Solicitação atendida)*[cite: 2].
+
+
+## 🎯 Checklist do Analista Ouro
+Marque abaixo o seu progresso no estudo do manual:
+- [ ] 🟦 Dominar os 5 Pilares e o Roteiro de Inatividade[cite: 2]
+- [ ] ⏱️ Memorizar os prazos de cancelamento estaduais (SP, MG, PA, MS)[cite: 2]
+- [ ] 🚌 Entender as regras de gratuidades da ANTT[cite: 2]
+- [ ] ⚙️ Aprender as regras de validação e segurança do CMS[cite: 2]
