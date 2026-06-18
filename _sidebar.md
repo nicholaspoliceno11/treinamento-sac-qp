@@ -1,8 +1,13 @@
-* **Navegação Principal**
-  * [🏠 Início / Voz da Marca](README.md)
+<!-- Logo oficial da Quero Passagem -->
+<img src="https://images.comparaonline.com/brazil/supplier/logo/400x400/quero-passagem.png" style="width: 85%; margin: 10px auto; display: block; border-radius: 8px;">
 
-* **Trilhas de Conhecimento**
-  * [💳 Trilha 1: Compras e Reembolsos](compras.md)
-  * [🔄 Trilha 2: Alterações e Cancelamentos](alteracoes.md)
-  * [💻 Trilha 3: Sistemas (Rodon vs. CMS)](sistemas.md)
-  * [🛋️ Trilha 4: Sala VIP & Embarque](salavip.md)
+* **🚀 Central do Atendente**
+  * [🏠 Painel Inicial](README.md)
+
+* **📚 Universo de Estudo**
+  * [📖 Material de Apoio](material.md)
+  * [🎥 Vídeos e Treinamentos](videos.md)
+
+* **💬 Espaço Colaborativo**
+  * [⭐ Feedbacks da Equipe](feedbacks.md)
+  * [❓ Fórum e Dúvidas](duvidas.md)
