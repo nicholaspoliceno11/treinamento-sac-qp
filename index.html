@@ -3,37 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <title>Portal de Treinamento SAC - Quero Passagem</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  
+  <!-- Estilo Moderno -->
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  
   <style>
     :root {
-      --theme-color: #001C3D; /* Azul Escuro da Logo */
+      --theme-color: #001C3D; /* Azul Escuro Original QP */
+      --accent-color: #E2E600; /* Amarelo Vibrante QP */
     }
+    
+    /* Customização da Barra Lateral */
     .sidebar {
       background-color: #001C3D !important;
-      color: white !important;
+      border-right: 3px solid var(--accent-color) !important;
     }
-    .sidebar-nav a {
-      color: #FFFFFF !important;
+    .sidebar-nav ul li a {
+      color: #ffffff !important;
+      font-size: 14px !important;
+      transition: all 0.3s ease;
+    }
+    .sidebar-nav ul li a:hover {
+      color: var(--accent-color) !important;
+      font-weight: bold;
+      padding-left: 10px;
     }
     .sidebar-nav li strong {
-      color: #E2E600 !important; /* Amarelo de Destaque */
+      color: var(--accent-color) !important;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 1px;
     }
-    .markdown-section a {
-      color: #001C3D;
-      font-weight: bold;
+
+    /* Cards Interativos e Joviais */
+    .markdown-section blockquote {
+      border-left: 4px solid var(--accent-color) !important;
+      background-color: #f0f4f8 !important;
+      border-radius: 0 8px 8px 0;
+      color: #001C3D !important;
+    }
+    
+    /* Efeito de Gamificação/Checklist */
+    .task-list-item input[type="checkbox"] {
+      accent-color: var(--theme-color);
+      transform: scale(1.2);
+      margin-right: 8px;
     }
   </style>
 </head>
 <body>
-  <div id="app">Carregando Treinamento...</div>
+  <div id="app">Carregando Universo de Conhecimento...</div>
   <script>
     window.$docsify = {
-      name: 'Quero Passagem',
-      repo: '',
+      name: 'SAC Interativo',
       loadSidebar: true,
-      subMaxLevel: 2
+      subMaxLevel: 2,
+      // Configurações de busca inteligente no portal
+      search: {
+        maxAge: 86400000,
+        paths: 'auto',
+        placeholder: '🔍 Digite uma dúvida (Ex: Sala VIP, Pix...)',
+        noData: '🤔 Ops, não encontrei essa regra!'
+      }
     }
   </script>
+  <!-- Plugins essenciais para interatividade -->
   <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
 </body>
 </html>
