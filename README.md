@@ -1,30 +1,15 @@
-# 🏠 Portal de Treinamento SAC - Quero Passagem
+# 🚀 Bem-vindo à sua Trilha de Sucesso, Atendente!
 
-Bem-vindo ao nosso portal interativo de treinamento! Este guia foi desenvolvido para garantir que nossa comunicação seja eficiente, empática e consistente.
+Aqui você manda no seu progresso. Conforme você for lendo os materiais e assistindo aos vídeos nas abas laterais, marque o seu progresso abaixo para não se perder! 📈
 
-## 💙 Diretrizes de Atendimento (Voz da Marca)
-
-Clique nos tópicos abaixo para expandir e revisar as regras de ouro:
-
-<details>
-<summary><b>📌 1. Personalize o Atendimento</b></summary>
-Sempre inicie a interação chamando o cliente pelo nome. Isso demonstra atenção e cuidado com cada pessoa atendida.
-</details>
-
-<details>
-<summary><b>📌 2. Confirme os Dados com Cuidado</b></summary>
-Antes de realizar qualquer ação no sistema, verifique e confirme as informações fornecidas pelo cliente para evitar erros[cite: 1].
-</details>
-
-<details>
-<summary><b>📌 3. Use Linguagem Clara e Acessível</b></summary>
-Comunique-se de forma objetiva, educada e empática. Evite jargões técnicos e termos complicados[cite: 1].
-</details>
-
-<details>
-<summary><b>📌 4. Escuta Ativa e Revisão Final</b></summary>
-Analise todos os detalhes da mensagem antes de responder[cite: 1]. Antes de enviar, releia para corrigir erros de português e digitação[cite: 1].
-</details>
+### 🎯 Minha Jornada de Onboarding
+- [ ] 🟦 **Módulo 1:** Entender a Voz da Marca e Postura com o Cliente[cite: 1]
+- [ ] 💳 **Módulo 2:** Dominar prazos de Pix, Boleto e Cartão[cite: 1]
+- [ ] 🔄 **Módulo 3:** Gravar os prazos de cancelamento de SP, MG e MS[cite: 1]
+- [ ] 💻 **Módulo 4:** Fazer o primeiro login simulado no Rodon B2B[cite: 2]
+- [ ] 🛋️ **Módulo 5:** Conhecer as novas regras da Sala VIP do Tietê[cite: 1]
 
 ---
-👉 **Selecione uma das Trilhas no menu lateral para iniciar seus estudos!**
+
+### 🔥 Desafio do Dia
+> **Dica de Ouro:** Teve dúvida sobre uma taxa de conveniência? Lembre-se de que ela não é reembolsável, mas dê o gancho da recompra em até 24 horas para encantar o cliente! 🧠💙
