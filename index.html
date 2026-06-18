@@ -1,76 +1,166 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Portal de Treinamento SAC - Quero Passagem</title>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  
-  <!-- Estilo Moderno -->
-  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-  
-  <style>
-    :root {
-      --theme-color: #001C3D; /* Azul Escuro Original QP */
-      --accent-color: #E2E600; /* Amarelo Vibrante QP */
-    }
-    
-    /* Customização da Barra Lateral */
-    .sidebar {
-      background-color: #001C3D !important;
-      border-right: 3px solid var(--accent-color) !important;
-    }
-    .sidebar-nav ul li a {
-      color: #ffffff !important;
-      font-size: 14px !important;
-      transition: all 0.3s ease;
-    }
-    .sidebar-nav ul li a:hover {
-      color: var(--accent-color) !important;
-      font-weight: bold;
-      padding-left: 10px;
-    }
-    .sidebar-nav li strong {
-      color: var(--accent-color) !important;
-      text-transform: uppercase;
-      font-size: 11px;
-      letter-spacing: 1px;
-    }
 
-    /* Cards Interativos e Joviais */
-    .markdown-section blockquote {
-      border-left: 4px solid var(--accent-color) !important;
-      background-color: #f0f4f8 !important;
-      border-radius: 0 8px 8px 0;
-      color: #001C3D !important;
-    }
-    
-    /* Efeito de Gamificação/Checklist */
-    .task-list-item input[type="checkbox"] {
-      accent-color: var(--theme-color);
-      transform: scale(1.2);
-      margin-right: 8px;
-    }
-  </style>
+<head>
+<meta charset="UTF-8">
+<title>Universidade Quero Passagem</title>
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+
+<style>
+
+:root{
+  --qp-blue:#001C3D;
+  --qp-yellow:#E2E600;
+  --qp-light:#F5F7FA;
+  --qp-white:#FFFFFF;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+  background:var(--qp-blue)!important;
+  border-right:4px solid var(--qp-yellow)!important;
+}
+
+.sidebar ul li a{
+  color:white!important;
+  font-weight:500;
+}
+
+.sidebar ul li a:hover{
+  color:var(--qp-yellow)!important;
+  padding-left:8px;
+  transition:.3s;
+}
+
+.sidebar h1{
+  color:white!important;
+}
+
+.sidebar-nav li strong{
+  color:var(--qp-yellow)!important;
+}
+
+/* CONTEÚDO */
+
+.markdown-section{
+  max-width:1200px;
+}
+
+.content{
+  padding-top:20px;
+}
+
+/* HERO */
+
+.hero{
+  background:linear-gradient(135deg,#001C3D,#00418A);
+  padding:40px;
+  border-radius:20px;
+  color:white;
+  margin-bottom:30px;
+}
+
+.hero h1{
+  color:white!important;
+}
+
+/* CARDS */
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:20px;
+  margin-top:20px;
+}
+
+.card{
+  background:white;
+  border-radius:18px;
+  padding:25px;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+  transition:.3s;
+}
+
+.card:hover{
+  transform:translateY(-5px);
+  border-left:6px solid var(--qp-yellow);
+}
+
+/* PROGRESSO */
+
+.progress{
+  width:100%;
+  background:#ddd;
+  height:25px;
+  border-radius:50px;
+  overflow:hidden;
+}
+
+.progress-bar{
+  width:35%;
+  height:100%;
+  background:var(--qp-yellow);
+}
+
+/* ALERTAS */
+
+blockquote{
+  border-left:5px solid var(--qp-yellow)!important;
+  background:#f6f6f6!important;
+  border-radius:8px;
+}
+
+/* BUSCA */
+
+.search input{
+  border-radius:50px!important;
+}
+
+/* TABELAS */
+
+table{
+  display:table!important;
+  width:100%;
+}
+
+th{
+  background:var(--qp-blue);
+  color:white;
+}
+
+</style>
+
 </head>
+
 <body>
-  <div id="app">Carregando Universo de Conhecimento...</div>
-  <script>
-    window.$docsify = {
-      name: 'SAC Interativo',
-      loadSidebar: true,
-      subMaxLevel: 2,
-      // Configurações de busca inteligente no portal
-      search: {
-        maxAge: 86400000,
-        paths: 'auto',
-        placeholder: '🔍 Digite uma dúvida (Ex: Sala VIP, Pix...)',
-        noData: '🤔 Ops, não encontrei essa regra!'
-      }
-    }
-  </script>
-  <!-- Plugins essenciais para interatividade -->
-  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
-  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+
+<div id="app">
+Carregando Universidade Quero Passagem...
+</div>
+
+<script>
+window.$docsify = {
+  name: '🎓 Universidade Quero Passagem',
+  loadSidebar: true,
+  auto2top: true,
+  subMaxLevel: 3,
+
+  search: {
+    maxAge:86400000,
+    paths:'auto',
+    placeholder:'🔍 Pesquise um assunto...',
+    noData:'Nenhum resultado encontrado'
+  }
+}
+</script>
+
+<script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+<script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+
 </body>
 </html>
