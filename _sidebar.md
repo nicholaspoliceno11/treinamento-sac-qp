@@ -1,17 +1,30 @@
-<!-- Logo oficial da Quero Passagem -->
-<img src="https://images.comparaonline.com/brazil/supplier/logo/400x400/quero-passagem.png" style="width: 85%; margin: 10px auto; display: block; border-radius: 8px;">
+<img src="https://images.comparaonline.com/brazil/supplier/logo/400x400/quero-passagem.png" width="180">
 
-* **🚀 Central do Atendente**
-  * [🏠 Painel Inicial / Pilares](README.md)
+# 🎓 Universidade Quero Passagem
 
-* **📖 Material de Apoio**
-  * [⏱️ Prazos e Cancelamentos](prazos.md)
-  * [🚌 Regulamentação ANTT](antt.md)
-  * [⚙️ Dominando o CMS (Sistemas)](cms.md)
+* 🏠 [Página Inicial](README.md)
 
-* **🎥 Vídeos e Treinamentos**
-  * [🎥 Pílulas de Conhecimento](videos.md)
+* 🚀 Onboarding
+  * [Boas-vindas](onboarding.md)
 
-* **💬 Espaço Colaborativo**
-  * [⭐ Feedbacks da Equipe](feedbacks.md)
-  * [❓ Fórum e Dúvidas](duvidas.md)
+* 💬 Atendimento
+  * [5 Pilares](atendimento.md)
+  * [Método 3D](metodo3d.md)
+
+* 💳 Financeiro
+  * [Prazos e Reembolsos](prazos.md)
+
+* 🚌 Regulamentação
+  * [ANTT](antt.md)
+
+* ⚙️ Sistemas
+  * [CMS](cms.md)
+
+* 🎥 Academia
+  * [Treinamentos](videos.md)
+
+* 🏆 Gamificação
+  * [Desafio do Dia](desafio.md)
+
+* ❓ Dúvidas
+  * [Central de Dúvidas](duvidas.md)
