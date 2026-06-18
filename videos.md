@@ -1,6 +1,20 @@
-# 🎥 Vídeos e Treinamentos rápidos
+# 🎥 Academia Quero Passagem
 
-Preparamos pílulas de conhecimento dinâmicas para você dominar a operação! Dê o play e acelere seu aprendizado:
+## Treinamentos Disponíveis
 
-### 🚌 1. Navegando no Sistema Rodon B2B
-> Aprenda em 3 minutos como localizar o pedido do cliente e checar a integração[cite: 2].
+| Curso | Tempo |
+|---------|---------|
+| CMS Básico | 5 min |
+| Rodon B2B | 4 min |
+| ANTT | 7 min |
+| Sala VIP | 3 min |
+
+---
+
+## Vídeo de Exemplo
+
+<iframe width="100%" height="450"
+src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+frameborder="0"
+allowfullscreen>
+</iframe>
