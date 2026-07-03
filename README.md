@@ -8,6 +8,17 @@ Aprenda, evolua e torne-se referência em atendimento.
 
 </div>
 
+<div class="mila-welcome">
+
+<img class="mila-img" src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
+
+<div class="mila-speech">
+<strong>Olá! Eu sou a Mila 👋</strong>
+<p>Sou a sua Agente de Treinamento da Quero Passagem e vou te acompanhar em toda a sua jornada de aprendizado. Bora começar? 🚀</p>
+</div>
+
+</div>
+
 # 🏆 Meu Progresso
 
 <div class="progress">

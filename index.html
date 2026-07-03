@@ -14,6 +14,8 @@
 
 :root{
   --qp-blue:#001C3D;
+  --qp-mila-blue:#0050B8;
+  --qp-mila-blue-light:#0A63D6;
   --qp-yellow:#E2E600;
   --qp-light:#F5F7FA;
   --qp-white:#FFFFFF;
@@ -58,11 +60,102 @@
 /* HERO */
 
 .hero{
-  background:linear-gradient(135deg,#001C3D,#00418A);
+  background:linear-gradient(135deg,var(--qp-blue),var(--qp-mila-blue));
   padding:40px;
   border-radius:20px;
   color:white;
   margin-bottom:30px;
+}
+
+/* MILA - AGENTE DE TREINAMENTO */
+
+.mila-welcome{
+  display:flex;
+  align-items:center;
+  gap:28px;
+  background:linear-gradient(135deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+  border-radius:20px;
+  padding:22px 30px;
+  margin-bottom:30px;
+  box-shadow:0 10px 26px rgba(0,80,184,.28);
+  border-left:8px solid var(--qp-yellow);
+  flex-wrap:wrap;
+}
+
+.mila-welcome .mila-img{
+  width:170px;
+  height:auto;
+  flex:0 0 auto;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.28));
+}
+
+.mila-speech{
+  flex:1;
+  min-width:230px;
+  color:#fff;
+}
+
+.mila-speech strong{
+  display:block;
+  font-size:1.4rem;
+  margin-bottom:8px;
+  color:#fff;
+}
+
+.mila-speech p{
+  margin:0;
+  line-height:1.55;
+  color:#eaf1ff;
+}
+
+/* MILA FLUTUANTE (todas as páginas) */
+
+#mila-float{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  width:92px;
+  height:92px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+  border:3px solid var(--qp-yellow);
+  overflow:hidden;
+  box-shadow:0 8px 20px rgba(0,0,0,.32);
+  z-index:9999;
+  cursor:pointer;
+  transition:transform .3s ease;
+}
+
+#mila-float img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:55% 12%;
+}
+
+#mila-float:hover{
+  transform:scale(1.08);
+}
+
+#mila-float::after{
+  content:"Mila • Agente de Treinamento";
+  position:absolute;
+  right:104%;
+  bottom:50%;
+  transform:translateY(50%);
+  white-space:nowrap;
+  background:var(--qp-blue);
+  color:#fff;
+  padding:6px 12px;
+  border-radius:20px;
+  font-size:12px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .3s ease;
+}
+
+#mila-float:hover::after{
+  opacity:1;
 }
 
 .hero h1{
@@ -141,6 +234,10 @@ th{
 
 <div id="app">
 Carregando Universidade Quero Passagem...
+</div>
+
+<div id="mila-float" title="Mila - Agente de Treinamento da Quero Passagem">
+  <img src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
 </div>
 
 <script>
