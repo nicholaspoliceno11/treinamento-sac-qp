@@ -1,6 +1,6 @@
 <div class="hero">
 
-# 🚀 Bem-vindo à Universidade Quero Passagem
+# 🚀 Bem-vindo ao Treinamento Quero Passagem
 
 Sua jornada de excelência começa aqui.
 

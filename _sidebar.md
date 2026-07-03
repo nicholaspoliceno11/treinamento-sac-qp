@@ -1,7 +1,3 @@
-<img src="https://images.comparaonline.com/brazil/supplier/logo/400x400/quero-passagem.png" width="180">
-
-# 🎓 Universidade Quero Passagem
-
 * 🏠 [Página Inicial](README.md)
 
 * 🚀 Onboarding

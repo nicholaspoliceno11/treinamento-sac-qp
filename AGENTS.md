@@ -2,7 +2,7 @@
 
 ## Cursor Cloud specific instructions
 
-This repo is a **static [Docsify](https://docsify.js.org) documentation site** ("Universidade Quero Passagem", a Brazilian customer-support training portal). Content is Brazilian Portuguese Markdown. There is **no build step, no bundler, no package manager, and no backend/database** — `index.html` renders the Markdown files in the browser at runtime.
+This repo is a **static [Docsify](https://docsify.js.org) documentation site** ("Treinamento Quero Passagem", a Brazilian customer-support training portal). Content is Brazilian Portuguese Markdown. There is **no build step, no bundler, no package manager, and no backend/database** — `index.html` renders the Markdown files in the browser at runtime.
 
 ### Running the site (dev mode)
 Docsify fetches the Markdown over HTTP, so you must serve the folder over HTTP — opening `index.html` via `file://` will not render. Serve from the repo root:
