@@ -9,5 +9,5 @@
  *   localStorage.setItem('qp_api_url', 'http://localhost:8787')
  */
 window.QP_CONFIG = {
-  API_URL: ""
+  API_URL: "https://script.google.com/macros/s/AKfycbxt7utGL-FKQTrdIlwLs7Es0EV4iGHud3jZI1gHFv2XdQ4HX3a3oS9bttZlm_pKkE2JQw/exec"
 };
