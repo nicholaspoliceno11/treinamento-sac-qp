@@ -25,14 +25,15 @@ mantém as senhas privadas e expõe uma pequena API que o site consome.
 
 ## Estrutura da planilha
 
-Aba de usuários (linha 1 = cabeçalhos):
+Aba de usuários (linha 1 = cabeçalhos). As colunas são **detectadas pelo nome**,
+então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhecidos:
 
-| NOME COMPLETO | E-MAIL | SENHA TEMPORARIA | SENHA | PERFIL | ANDAMENTO |
-|---|---|---|---|---|---|
+| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO |
+|---|---|---|---|---|
 
 - **PERFIL**: use `Administrador` ou `Atendente`.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
-- **Login**: valida a coluna `SENHA` (se vazia, usa `SENHA TEMPORARIA`).
+- **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
 
 As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamente.
 

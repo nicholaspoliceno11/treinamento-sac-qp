@@ -6,18 +6,17 @@
  *   - Quem pode acessar: Qualquer pessoa
  * Copie a URL gerada e cole em assets/config.js (API_URL).
  *
- * A planilha principal (aba de login) deve ter, na linha 1, os cabeçalhos:
- *   NOME COMPLETO | E-MAIL | SENHA TEMPORARIA | SENHA | PERFIL | ANDAMENTO
+ * A aba de login precisa ter, na linha 1, cabeçalhos com estes nomes
+ * (a ORDEM não importa — as colunas são detectadas pelo nome):
+ *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
+ *   (a coluna "SENHA TEMPORARIA" é opcional)
  *
  * As abas auxiliares (Progresso, Comentarios, Conteudo) são criadas
  * automaticamente na primeira execução.
  */
 
-// ID da sua planilha (o trecho entre /d/ e /edit na URL). Já preenchido.
-// Assim o script funciona mesmo sem estar "vinculado" à planilha.
 var SPREADSHEET_ID = "1TxJC6cboGQiQwu5faAqZZo-vXIpO_6uRI2e_DKIlRgA";
 var LOGIN_SHEET = "Login Treinamento"; // nome da aba com os usuários
-var COL = { NOME: 0, EMAIL: 1, SENHA_TEMP: 2, SENHA: 3, PERFIL: 4, ANDAMENTO: 5 };
 
 function getSS() {
   return SPREADSHEET_ID
@@ -59,10 +58,19 @@ function json(obj) {
 
 function norm(s) { return String(s == null ? "" : s).trim(); }
 
-// Normalização para senha: remove espaços comuns e caracteres invisíveis
-// (zero-width, BOM, no-break space) que às vezes vêm colados ao colar na planilha.
+// Remove espaços e caracteres invisíveis (zero-width, BOM, no-break space).
 function normPw(s) {
   return String(s == null ? "" : s).replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "").trim();
+}
+
+function stripAccents(s) {
+  return String(s == null ? "" : s)
+    .replace(/[ÁÀÂÃÄ]/g, "A").replace(/[áàâãä]/g, "a")
+    .replace(/[ÉÈÊË]/g, "E").replace(/[éèêë]/g, "e")
+    .replace(/[ÍÌÎÏ]/g, "I").replace(/[íìîï]/g, "i")
+    .replace(/[ÓÒÔÕÖ]/g, "O").replace(/[óòôõö]/g, "o")
+    .replace(/[ÚÙÛÜ]/g, "U").replace(/[úùûü]/g, "u")
+    .replace(/[Çç]/g, "C");
 }
 
 function loginSheet() {
@@ -70,31 +78,71 @@ function loginSheet() {
   return ss.getSheetByName(LOGIN_SHEET) || ss.getSheets()[0];
 }
 
-function findUser(email) {
+// Detecta os índices das colunas pelo nome do cabeçalho (robusto a ordem/edições).
+function loginCols(headers) {
+  var H = (headers || []).map(function (h) { return stripAccents(norm(h)).toUpperCase(); });
+  function find() {
+    for (var a = 0; a < arguments.length; a++) {
+      var idx = H.indexOf(arguments[a]);
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+  return {
+    nome: find("NOME COMPLETO", "NOME"),
+    email: find("E-MAIL", "EMAIL"),
+    senha: find("SENHA"),
+    senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
+    perfil: find("PERFIL"),
+    andamento: find("ANDAMENTO")
+  };
+}
+
+function loginData() {
   var sh = loginSheet();
-  var data = sh.getDataRange().getValues();
+  var values = sh.getDataRange().getValues();
+  return { sheet: sh, values: values, cols: loginCols(values[0] || []) };
+}
+
+function findUser(email) {
+  var ld = loginData();
+  var c = ld.cols;
+  if (c.email < 0) return null;
   var target = norm(email).toLowerCase();
-  for (var i = 1; i < data.length; i++) {
-    if (norm(data[i][COL.EMAIL]).toLowerCase() === target) {
-      return { row: i + 1, data: data[i] };
+  for (var i = 1; i < ld.values.length; i++) {
+    if (norm(ld.values[i][c.email]).toLowerCase() === target) {
+      return { row: i + 1, data: ld.values[i], cols: c };
     }
   }
   return null;
 }
 
+function cell(u, key) { return u.cols[key] >= 0 ? norm(u.data[u.cols[key]]) : ""; }
+
 function handleLogin(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
   var prov = normPw(req.senha);
-  var s1 = normPw(u.data[COL.SENHA]);          // coluna SENHA
-  var s2 = normPw(u.data[COL.SENHA_TEMP]);     // coluna SENHA TEMPORARIA
+  var s1 = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]) : "";
+  var s2 = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]) : "";
   var ok = (s1 !== "" && prov === s1) || (s2 !== "" && prov === s2);
   if (!ok) return { ok: false, error: "senha" };
   return {
     ok: true,
-    nome: norm(u.data[COL.NOME]),
-    email: norm(u.data[COL.EMAIL]),
-    perfil: norm(u.data[COL.PERFIL]) || "Atendente"
+    nome: cell(u, "nome"),
+    email: cell(u, "email"),
+    perfil: cell(u, "perfil") || "Atendente"
+  };
+}
+
+function handleGetState(req) {
+  var u = findUser(req.email);
+  if (!u) return { ok: false, error: "usuario" };
+  return {
+    ok: true,
+    nome: cell(u, "nome"),
+    perfil: cell(u, "perfil") || "Atendente",
+    concluidos: completedTopics(req.email)
   };
 }
 
@@ -104,36 +152,22 @@ function handleLogin(req) {
  */
 function handleDebug(req) {
   if (req.token !== "qp-debug") return { ok: false, error: "token" };
-  var sh = loginSheet();
-  var data = sh.getDataRange().getValues();
+  var ld = loginData();
   var u = findUser(req.email);
-  var out = { ok: true, sheetName: sh.getName(), numCols: (data[0] || []).length, headers: data[0] || [] };
+  var out = { ok: true, sheetName: ld.sheet.getName(), numCols: (ld.values[0] || []).length, headers: ld.values[0] || [], cols: ld.cols };
   if (u) {
     out.found = true;
     out.rowNumber = u.row;
-    out.perfil = norm(u.data[COL.PERFIL]);
-    out.emailStored = norm(u.data[COL.EMAIL]);
+    out.perfil = cell(u, "perfil");
     out.provLen = normPw(req.senha).length;
-    out.senhaLen = normPw(u.data[COL.SENHA]).length;
-    out.senhaTempLen = normPw(u.data[COL.SENHA_TEMP]).length;
-    out.matchSenha = normPw(req.senha) === normPw(u.data[COL.SENHA]);
-    out.matchTemp = normPw(req.senha) === normPw(u.data[COL.SENHA_TEMP]);
-    out.cells = u.data.map(function (v) { return String(v).length + ":" + String(v).substring(0, 3); });
+    out.senhaLen = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]).length : -1;
+    out.senhaTempLen = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]).length : -1;
+    out.matchSenha = u.cols.senha >= 0 && normPw(req.senha) === normPw(u.data[u.cols.senha]);
+    out.matchTemp = u.cols.senhaTemp >= 0 && normPw(req.senha) === normPw(u.data[u.cols.senhaTemp]);
   } else {
     out.found = false;
   }
   return out;
-}
-
-function handleGetState(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
-  return {
-    ok: true,
-    nome: norm(u.data[COL.NOME]),
-    perfil: norm(u.data[COL.PERFIL]) || "Atendente",
-    concluidos: completedTopics(req.email)
-  };
 }
 
 /* ---------------- Progresso ---------------- */
@@ -171,7 +205,9 @@ function handleSetProgress(req) {
 
 function writeAndamento(email, percent) {
   var u = findUser(email);
-  if (u) loginSheet().getRange(u.row, COL.ANDAMENTO + 1).setValue(percent + "%");
+  if (u && u.cols.andamento >= 0) {
+    loginSheet().getRange(u.row, u.cols.andamento + 1).setValue(percent + "%");
+  }
 }
 
 /* ---------------- Comentários e Conteúdo ---------------- */
@@ -180,8 +216,8 @@ function handleAddComment(req) {
   if (!u) return { ok: false, error: "usuario" };
   var sh = ensureSheet("Comentarios", ["TOPICO", "NOME", "EMAIL", "PERFIL", "TEXTO", "TS"]);
   sh.appendRow([
-    norm(req.topic), norm(u.data[COL.NOME]), norm(u.data[COL.EMAIL]),
-    norm(u.data[COL.PERFIL]), norm(req.texto), new Date().toISOString()
+    norm(req.topic), cell(u, "nome"), cell(u, "email"),
+    cell(u, "perfil"), norm(req.texto), new Date().toISOString()
   ]);
   return { ok: true };
 }
@@ -189,11 +225,11 @@ function handleAddComment(req) {
 function handleAddContent(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
-  if (!/admin/i.test(norm(u.data[COL.PERFIL]))) return { ok: false, error: "perfil" };
+  if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
   var sh = ensureSheet("Conteudo", ["TOPICO", "TIPO", "VALOR", "AUTOR", "EMAIL", "TS"]);
   sh.appendRow([
     norm(req.topic), norm(req.tipo), norm(req.valor),
-    norm(u.data[COL.NOME]), norm(u.data[COL.EMAIL]), new Date().toISOString()
+    cell(u, "nome"), cell(u, "email"), new Date().toISOString()
   ]);
   return { ok: true };
 }
