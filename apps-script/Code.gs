@@ -13,8 +13,17 @@
  * automaticamente na primeira execução.
  */
 
+// ID da sua planilha (o trecho entre /d/ e /edit na URL). Já preenchido.
+// Assim o script funciona mesmo sem estar "vinculado" à planilha.
+var SPREADSHEET_ID = "1TxJC6cboGQiQwu5faAqZZo-vXIpO_6uRI2e_DKIlRgA";
 var LOGIN_SHEET = "Login Treinamento"; // nome da aba com os usuários
 var COL = { NOME: 0, EMAIL: 1, SENHA_TEMP: 2, SENHA: 3, PERFIL: 4, ANDAMENTO: 5 };
+
+function getSS() {
+  return SPREADSHEET_ID
+    ? SpreadsheetApp.openById(SPREADSHEET_ID)
+    : SpreadsheetApp.getActiveSpreadsheet();
+}
 
 function doGet() {
   return json({ ok: true, service: "treinamento-qp", time: new Date().toISOString() });
@@ -50,7 +59,7 @@ function json(obj) {
 function norm(s) { return String(s == null ? "" : s).trim(); }
 
 function loginSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSS();
   return ss.getSheetByName(LOGIN_SHEET) || ss.getSheets()[0];
 }
 
@@ -176,7 +185,7 @@ function readTable(sheetName, topic) {
 }
 
 function ensureSheet(name, headers) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSS();
   var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);

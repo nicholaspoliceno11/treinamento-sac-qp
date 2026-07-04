@@ -9,8 +9,9 @@ mantém as senhas privadas e expõe uma pequena API que o site consome.
 1. Abra a planilha de login no Google Sheets.
 2. Menu **Extensões → Apps Script**.
 3. Apague o conteúdo do `Código.gs` e cole todo o conteúdo de [`Code.gs`](./Code.gs). Salve (💾).
-4. Se o nome da aba de usuários não for exatamente **`Login Treinamento`**, ajuste a
-   constante `LOGIN_SHEET` no topo do script.
+4. O `SPREADSHEET_ID` já vem preenchido com o ID da sua planilha (então funciona mesmo
+   em um editor não vinculado). Se o nome da aba de usuários não for exatamente
+   **`Login Treinamento`**, ajuste a constante `LOGIN_SHEET` no topo do script.
 5. Clique em **Implantar → Nova implantação**.
    - Tipo: **App da Web**.
    - **Executar como:** Eu (seu e-mail).
