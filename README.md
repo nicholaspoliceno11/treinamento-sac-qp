@@ -22,10 +22,10 @@ Aprenda, evolua e torne-se referência em atendimento.
 # 🏆 Meu Progresso
 
 <div class="qp-progress">
-<div class="qp-progress-bar"></div>
+<div class="qp-progress-bar" id="qp-home-bar"></div>
 </div>
 
-35% concluído
+<p id="qp-home-label">35% concluído</p>
 
 ---
 

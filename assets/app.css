@@ -1,0 +1,227 @@
+/* ===== Portal de Treinamento — login, progresso, comentários ===== */
+
+:root{
+  --qp-blue:#001C3D;
+  --qp-mila-blue:#0050B8;
+  --qp-mila-blue-light:#0A63D6;
+  --qp-yellow:#E2E600;
+}
+
+/* ---------- Overlay de login ---------- */
+#qp-login-overlay{
+  position:fixed;
+  inset:0;
+  z-index:100000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,var(--qp-blue),var(--qp-mila-blue));
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:20px;
+}
+#qp-login-overlay.qp-show{ display:flex; }
+
+.qp-login-card{
+  width:100%;
+  max-width:400px;
+  background:#fff;
+  border-radius:18px;
+  padding:34px 30px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+  border-top:6px solid var(--qp-yellow);
+}
+.qp-login-card h2{
+  margin:0 0 4px;
+  color:var(--qp-blue);
+  font-size:1.4rem;
+}
+.qp-login-card p.qp-sub{
+  margin:0 0 22px;
+  color:#5a6472;
+  font-size:.9rem;
+}
+.qp-login-card label{
+  display:block;
+  font-size:.8rem;
+  font-weight:600;
+  color:var(--qp-blue);
+  margin:14px 0 6px;
+}
+.qp-login-card input{
+  width:100%;
+  box-sizing:border-box;
+  padding:11px 13px;
+  border:1px solid #d7dbe0;
+  border-radius:10px;
+  font-size:.95rem;
+  outline:none;
+  transition:border-color .2s;
+}
+.qp-login-card input:focus{ border-color:var(--qp-mila-blue); }
+.qp-btn{
+  cursor:pointer;
+  border:none;
+  border-radius:10px;
+  font-weight:600;
+  transition:filter .2s, transform .1s;
+}
+.qp-btn:active{ transform:translateY(1px); }
+.qp-btn-primary{
+  width:100%;
+  margin-top:22px;
+  padding:12px;
+  font-size:1rem;
+  color:#fff;
+  background:linear-gradient(135deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+}
+.qp-btn-primary:hover{ filter:brightness(1.06); }
+.qp-btn-primary[disabled]{ opacity:.6; cursor:progress; }
+
+.qp-login-msg{
+  margin-top:16px;
+  padding:11px 13px;
+  border-radius:10px;
+  font-size:.87rem;
+  display:none;
+}
+.qp-login-msg.qp-error{ display:block; background:#fdecec; color:#b3261e; border:1px solid #f5c2c0; }
+.qp-login-msg.qp-info{ display:block; background:#eef4ff; color:#0a3d91; border:1px solid #c9dbff; }
+
+/* ---------- Barra superior do usuário ---------- */
+#qp-topbar{
+  display:none;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+  background:#fff;
+  border:1px solid #e8e8ed;
+  border-left:5px solid var(--qp-yellow);
+  border-radius:14px;
+  padding:12px 18px;
+  margin-bottom:22px;
+}
+#qp-topbar.qp-show{ display:flex; }
+#qp-topbar .qp-user{ font-weight:600; color:var(--qp-blue); }
+#qp-topbar .qp-badge{
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  padding:3px 9px;
+  border-radius:20px;
+  background:var(--qp-mila-blue);
+  color:#fff;
+}
+#qp-topbar .qp-badge.qp-admin{ background:var(--qp-blue); }
+#qp-topbar .qp-mini-progress{
+  flex:1;
+  min-width:140px;
+  height:12px;
+  background:#e8e8ed;
+  border-radius:20px;
+  overflow:hidden;
+}
+#qp-topbar .qp-mini-progress > div{
+  height:100%;
+  width:0%;
+  background:var(--qp-yellow);
+  transition:width .4s ease;
+}
+#qp-topbar .qp-mini-label{ font-size:.8rem; color:#5a6472; min-width:80px; }
+.qp-btn-ghost{
+  background:#f3f4f6;
+  color:var(--qp-blue);
+  padding:8px 14px;
+  font-size:.85rem;
+}
+.qp-btn-ghost:hover{ filter:brightness(.97); }
+
+/* ---------- Bloco "concluído" por tópico ---------- */
+.qp-complete{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#f5f7fa;
+  border:1px solid #e8e8ed;
+  border-radius:14px;
+  padding:16px 20px;
+  margin:26px 0;
+}
+.qp-complete input{ width:22px; height:22px; cursor:pointer; accent-color:var(--qp-mila-blue); }
+.qp-complete label{ font-weight:600; color:var(--qp-blue); cursor:pointer; }
+.qp-complete.qp-done{ background:#eafbf0; border-color:#bfe9cd; }
+
+/* ---------- Seções injetadas ---------- */
+.qp-section{ margin:30px 0; }
+.qp-section h3.qp-section-title{
+  color:var(--qp-blue);
+  border-bottom:2px solid var(--qp-yellow);
+  padding-bottom:6px;
+  display:inline-block;
+}
+
+/* blocos de conteúdo do admin */
+.qp-block{
+  border:1px solid #e8e8ed;
+  border-radius:12px;
+  padding:14px 16px;
+  margin:12px 0;
+  background:#fff;
+}
+.qp-block .qp-meta{ font-size:.75rem; color:#8a94a2; margin-top:8px; }
+.qp-block img{ max-width:100%; border-radius:8px; }
+.qp-block .qp-video{ position:relative; padding-bottom:56.25%; height:0; }
+.qp-block .qp-video iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:8px; }
+
+/* comentários */
+.qp-comment{
+  border:1px solid #e8e8ed;
+  border-radius:12px;
+  padding:12px 15px;
+  margin:10px 0;
+  background:#fff;
+}
+.qp-comment .qp-c-head{ font-size:.85rem; font-weight:600; color:var(--qp-blue); }
+.qp-comment .qp-c-head .qp-badge{ font-size:.62rem; padding:2px 7px; margin-left:6px; }
+.qp-comment .qp-c-time{ font-weight:400; color:#8a94a2; font-size:.75rem; margin-left:6px; }
+.qp-comment .qp-c-body{ margin-top:6px; color:#333; white-space:pre-wrap; }
+
+/* formulários */
+.qp-form{
+  background:#f5f7fa;
+  border:1px solid #e8e8ed;
+  border-radius:12px;
+  padding:16px;
+  margin-top:14px;
+}
+.qp-form textarea, .qp-form input, .qp-form select{
+  width:100%;
+  box-sizing:border-box;
+  padding:10px 12px;
+  border:1px solid #d7dbe0;
+  border-radius:9px;
+  font-size:.92rem;
+  margin-bottom:10px;
+  font-family:inherit;
+}
+.qp-form textarea{ min-height:70px; resize:vertical; }
+.qp-form .qp-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.qp-form .qp-row > *{ flex:1; min-width:140px; }
+.qp-btn-add{
+  background:linear-gradient(135deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+  color:#fff;
+  padding:10px 18px;
+  font-size:.9rem;
+}
+.qp-btn-add:hover{ filter:brightness(1.06); }
+.qp-empty{ color:#8a94a2; font-size:.9rem; font-style:italic; }
+.qp-hint{ font-size:.78rem; color:#8a94a2; margin:-4px 0 10px; }
+
+.qp-api-warning{
+  background:#fff8e1;
+  border:1px solid #ffe08a;
+  color:#7a5b00;
+  border-radius:10px;
+  padding:10px 14px;
+  font-size:.82rem;
+  margin-bottom:18px;
+}
