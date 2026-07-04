@@ -42,6 +42,7 @@ function doPost(e) {
       case "addComment":  return json(handleAddComment(req));
       case "getContent":  return json({ ok: true, blocks: readTable("Conteudo", req.topic) });
       case "addContent":  return json(handleAddContent(req));
+      case "debug":       return json(handleDebug(req));
       default:            return json({ ok: false, message: "Ação desconhecida" });
     }
   } catch (err) {
@@ -57,6 +58,12 @@ function json(obj) {
 }
 
 function norm(s) { return String(s == null ? "" : s).trim(); }
+
+// Normalização para senha: remove espaços comuns e caracteres invisíveis
+// (zero-width, BOM, no-break space) que às vezes vêm colados ao colar na planilha.
+function normPw(s) {
+  return String(s == null ? "" : s).replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "").trim();
+}
 
 function loginSheet() {
   var ss = getSS();
@@ -78,14 +85,44 @@ function findUser(email) {
 function handleLogin(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
-  var registrada = norm(u.data[COL.SENHA]) || norm(u.data[COL.SENHA_TEMP]);
-  if (norm(req.senha) !== registrada) return { ok: false, error: "senha" };
+  var prov = normPw(req.senha);
+  var s1 = normPw(u.data[COL.SENHA]);          // coluna SENHA
+  var s2 = normPw(u.data[COL.SENHA_TEMP]);     // coluna SENHA TEMPORARIA
+  var ok = (s1 !== "" && prov === s1) || (s2 !== "" && prov === s2);
+  if (!ok) return { ok: false, error: "senha" };
   return {
     ok: true,
     nome: norm(u.data[COL.NOME]),
     email: norm(u.data[COL.EMAIL]),
     perfil: norm(u.data[COL.PERFIL]) || "Atendente"
   };
+}
+
+/**
+ * Diagnóstico seguro (protegido por token). Não expõe a senha,
+ * apenas tamanhos/estrutura para depurar problemas de cadastro.
+ */
+function handleDebug(req) {
+  if (req.token !== "qp-debug") return { ok: false, error: "token" };
+  var sh = loginSheet();
+  var data = sh.getDataRange().getValues();
+  var u = findUser(req.email);
+  var out = { ok: true, sheetName: sh.getName(), numCols: (data[0] || []).length, headers: data[0] || [] };
+  if (u) {
+    out.found = true;
+    out.rowNumber = u.row;
+    out.perfil = norm(u.data[COL.PERFIL]);
+    out.emailStored = norm(u.data[COL.EMAIL]);
+    out.provLen = normPw(req.senha).length;
+    out.senhaLen = normPw(u.data[COL.SENHA]).length;
+    out.senhaTempLen = normPw(u.data[COL.SENHA_TEMP]).length;
+    out.matchSenha = normPw(req.senha) === normPw(u.data[COL.SENHA]);
+    out.matchTemp = normPw(req.senha) === normPw(u.data[COL.SENHA_TEMP]);
+    out.cells = u.data.map(function (v) { return String(v).length + ":" + String(v).substring(0, 3); });
+  } else {
+    out.found = false;
+  }
+  return out;
 }
 
 function handleGetState(req) {
