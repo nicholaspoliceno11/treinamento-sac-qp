@@ -1,5 +1,5 @@
-# ❓ Fórum e Dúvidas do SAC
+# ❓ Central de Dúvidas
 
-Ficou com alguma dúvida sobre alguma regra de cancelamento[cite: 2], escala de frota[cite: 2] ou erro de emissão de reserva[cite: 2]? Envie sua pergunta abaixo! Nossa equipe de liderança revisará e atualizará o painel de respostas.
+Ficou com alguma dúvida sobre regras de cancelamento, escala de frota, emissão de reserva — ou tem um ponto de melhoria? Envie no fórum abaixo.
 
-<iframe src="https://docs.google.com/forms/d/e/FAIpQLSfD_NvvZ_123456789_SEU_FORMULARIO_AQUI/viewform?embedded=true" width="100%" height="700" frameborder="0" marginheight="0" marginwidth="0">Carregando fórum de dúvidas...</iframe>
+A liderança revisa e responde, e **todas as dúvidas e respostas ficam visíveis para toda a equipe**.
