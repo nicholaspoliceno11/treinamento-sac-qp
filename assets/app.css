@@ -224,6 +224,10 @@
   margin:12px 0;
   background:#fff;
 }
+.qp-duvida .qp-c-head{ font-size:.85rem; font-weight:600; color:var(--qp-blue); }
+.qp-duvida .qp-c-head .qp-badge{ font-size:.62rem; padding:2px 7px; margin-left:6px; }
+.qp-duvida .qp-c-time{ font-weight:400; color:#8a94a2; font-size:.75rem; margin-left:6px; }
+.qp-duvida .qp-c-body{ margin-top:6px; color:#333; white-space:pre-wrap; }
 .qp-resposta{
   margin-top:12px;
   padding:12px 14px;
