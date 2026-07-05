@@ -216,6 +216,25 @@
 .qp-empty{ color:#8a94a2; font-size:.9rem; font-style:italic; }
 .qp-hint{ font-size:.78rem; color:#8a94a2; margin:-4px 0 10px; }
 
+/* fórum de dúvidas */
+.qp-duvida{
+  border:1px solid #e8e8ed;
+  border-radius:12px;
+  padding:14px 16px;
+  margin:12px 0;
+  background:#fff;
+}
+.qp-resposta{
+  margin-top:12px;
+  padding:12px 14px;
+  background:#eef4ff;
+  border-left:4px solid var(--qp-mila-blue);
+  border-radius:8px;
+}
+.qp-resposta strong{ color:var(--qp-blue); }
+.qp-answer-form{ margin-top:12px; }
+.qp-await{ margin-top:10px; font-size:.82rem; color:#8a94a2; font-style:italic; }
+
 .qp-api-warning{
   background:#fff8e1;
   border:1px solid #ffe08a;

@@ -72,14 +72,3 @@ Vídeos e treinamentos.
 > Um cliente perdeu o embarque por 20 minutos.
 >
 > Qual o procedimento correto?
-
----
-
-# ✅ Minha Checklist
-
-- [ ] Concluir Onboarding
-- [ ] Dominar Atendimento
-- [ ] Estudar Financeiro
-- [ ] Aprender CMS
-- [ ] Conhecer ANTT
-- [ ] Certificação Final
