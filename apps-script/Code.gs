@@ -41,6 +41,9 @@ function doPost(e) {
       case "addComment":  return json(handleAddComment(req));
       case "getContent":  return json({ ok: true, blocks: readTable("Conteudo", req.topic) });
       case "addContent":  return json(handleAddContent(req));
+      case "getDuvidas":  return json({ ok: true, duvidas: listDuvidas() });
+      case "addDuvida":   return json(handleAddDuvida(req));
+      case "answerDuvida":return json(handleAnswerDuvida(req));
       case "debug":       return json(handleDebug(req));
       default:            return json({ ok: false, message: "Ação desconhecida" });
     }
@@ -255,6 +258,57 @@ function readTable(sheetName, topic) {
     }
   }
   return out;
+}
+
+/* ---------------- Fórum de Dúvidas ---------------- */
+var DUVIDAS_HEADERS = ["ID", "NOME", "EMAIL", "PERFIL", "DUVIDA", "RESPOSTA", "RESPONDIDO_POR", "CRIADO_EM", "RESPONDIDO_EM"];
+
+function duvidasSheet() { return ensureSheet("Duvidas", DUVIDAS_HEADERS); }
+
+function listDuvidas() {
+  var data = duvidasSheet().getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < data.length; i++) {
+    out.push({
+      id: norm(data[i][0]), nome: norm(data[i][1]), perfil: norm(data[i][3]),
+      duvida: norm(data[i][4]), resposta: norm(data[i][5]),
+      respondidoPor: norm(data[i][6]), criadoEm: norm(data[i][7]), respondidoEm: norm(data[i][8])
+    });
+  }
+  return out.reverse(); // mais recentes primeiro
+}
+
+function handleAddDuvida(req) {
+  var u = findUser(req.email);
+  if (!u) return { ok: false, error: "usuario" };
+  var texto = norm(req.texto);
+  if (!texto) return { ok: false, message: "Dúvida vazia" };
+  var id = "D" + new Date().getTime();
+  duvidasSheet().appendRow([
+    id, cell(u, "nome"), cell(u, "email"), cell(u, "perfil"),
+    texto, "", "", new Date().toISOString(), ""
+  ]);
+  return { ok: true, id: id };
+}
+
+function handleAnswerDuvida(req) {
+  var u = findUser(req.email);
+  if (!u) return { ok: false, error: "usuario" };
+  if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
+  var resposta = norm(req.resposta);
+  if (!resposta) return { ok: false, message: "Resposta vazia" };
+  var sh = duvidasSheet();
+  var data = sh.getDataRange().getValues();
+  var id = norm(req.id);
+  for (var i = 1; i < data.length; i++) {
+    if (norm(data[i][0]) === id) {
+      sh.getRange(i + 1, 6).setValue(resposta);                    // RESPOSTA
+      sh.getRange(i + 1, 7).setValue(cell(u, "nome"));             // RESPONDIDO_POR
+      sh.getRange(i + 1, 9).setValue(new Date().toISOString());    // RESPONDIDO_EM
+      return { ok: true };
+    }
+  }
+  return { ok: false, message: "Dúvida não encontrada" };
 }
 
 function ensureSheet(name, headers) {
