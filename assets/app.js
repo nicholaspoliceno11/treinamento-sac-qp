@@ -233,6 +233,15 @@
       return;
     }
 
+    // Página especial: Central de Dúvidas => fórum (pergunta + resposta da gestão)
+    if (topic === "duvidas") {
+      wrap.appendChild(buildForum());
+      section.appendChild(wrap);
+      refreshProgressUI();
+      if (apiConfigured()) loadDuvidas();
+      return;
+    }
+
     // Bloco "concluído" (só nos tópicos que contam progresso)
     if (isTopic(topic)) wrap.appendChild(buildComplete(topic));
 
@@ -400,6 +409,89 @@
     btn.disabled = true;
     api({ action: "addComment", email: state.session.email, topic: topic, texto: texto })
       .then(function (res) { if (res && res.ok) { ta.value = ""; loadComments(topic); } else alert((res && res.message) || "Não foi possível comentar."); })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  // -------------------------------------------------- fórum de dúvidas
+  function buildForum() {
+    var sec = document.createElement("div");
+    sec.className = "qp-section";
+    sec.innerHTML =
+      '<h3 class="qp-section-title">Fórum de Dúvidas</h3>' +
+      '<p class="qp-hint">Envie uma dúvida ou ponto de melhoria. A gestão responde e todos da equipe podem ver a pergunta e a resposta.</p>' +
+      '<div class="qp-form">' +
+      '  <textarea id="qp-duvida-text" placeholder="Escreva sua dúvida ou sugestão de melhoria..."></textarea>' +
+      '  <button class="qp-btn qp-btn-add" id="qp-duvida-add">Enviar dúvida</button>' +
+      '</div>' +
+      '<div id="qp-duvidas-list"><p class="qp-empty">Carregando…</p></div>';
+    sec.querySelector("#qp-duvida-add").addEventListener("click", addDuvida);
+    return sec;
+  }
+
+  function loadDuvidas() {
+    api({ action: "getDuvidas" })
+      .then(function (res) { renderDuvidas((res && res.duvidas) || []); })
+      .catch(function () { renderDuvidas([]); });
+  }
+
+  function renderDuvidas(list) {
+    var box = document.getElementById("qp-duvidas-list");
+    if (!box) return;
+    if (!list.length) { box.innerHTML = '<p class="qp-empty">Ainda não há dúvidas. Seja o primeiro a enviar.</p>'; return; }
+    box.innerHTML = "";
+    list.forEach(function (d) {
+      var card = document.createElement("div");
+      card.className = "qp-duvida";
+      var admin = /admin/i.test(d.perfil || "");
+      var html =
+        '<div class="qp-c-head">' + esc(d.nome || d.email) +
+        '<span class="qp-badge' + (admin ? " qp-admin" : "") + '">' + esc(d.perfil || "") + "</span>" +
+        '<span class="qp-c-time">' + esc(fmtTime(d.criadoEm)) + "</span></div>" +
+        '<div class="qp-c-body">' + esc(d.duvida) + "</div>";
+      if (d.resposta) {
+        html += '<div class="qp-resposta"><strong>Resposta</strong> ' +
+          '<span class="qp-c-time">' + esc(d.respondidoPor || "") + " • " + esc(fmtTime(d.respondidoEm)) + "</span>" +
+          '<div class="qp-c-body">' + esc(d.resposta) + "</div></div>";
+      } else if (isAdmin()) {
+        html += '<div class="qp-form qp-answer-form">' +
+          '<textarea placeholder="Responder esta dúvida..."></textarea>' +
+          '<button class="qp-btn qp-btn-add">Responder</button></div>';
+      } else {
+        html += '<div class="qp-await">Aguardando resposta da gestão.</div>';
+      }
+      card.innerHTML = html;
+      if (!d.resposta && isAdmin()) {
+        var f = card.querySelector(".qp-answer-form");
+        var btn = f.querySelector("button"), ta = f.querySelector("textarea");
+        btn.addEventListener("click", function () { answerDuvida(d.id, ta.value, btn); });
+      }
+      box.appendChild(card);
+    });
+  }
+
+  function addDuvida() {
+    var ta = document.getElementById("qp-duvida-text");
+    var texto = (ta.value || "").trim();
+    if (!texto) return;
+    var btn = document.getElementById("qp-duvida-add");
+    btn.disabled = true;
+    api({ action: "addDuvida", email: state.session.email, texto: texto })
+      .then(function (res) { if (res && res.ok) { ta.value = ""; loadDuvidas(); } else alert((res && res.message) || "Não foi possível enviar a dúvida."); })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  function answerDuvida(id, resposta, btn) {
+    resposta = (resposta || "").trim();
+    if (!resposta) return;
+    btn.disabled = true;
+    api({ action: "answerDuvida", email: state.session.email, id: id, resposta: resposta })
+      .then(function (res) {
+        if (res && res.ok) loadDuvidas();
+        else if (res && res.error === "perfil") alert("Apenas administradores podem responder.");
+        else alert((res && res.message) || "Não foi possível responder.");
+      })
       .catch(function () { alert("Falha de conexão."); })
       .then(function () { btn.disabled = false; });
   }
