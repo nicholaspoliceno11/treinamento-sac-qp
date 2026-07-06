@@ -216,6 +216,22 @@
 .qp-empty{ color:#8a94a2; font-size:.9rem; font-style:italic; }
 .qp-hint{ font-size:.78rem; color:#8a94a2; margin:-4px 0 10px; }
 
+.qp-restricted{
+  background:#fff8e6;
+  border:1px solid #f0d78c;
+  border-left:5px solid var(--qp-yellow);
+  border-radius:12px;
+  padding:28px 24px;
+  margin:20px 0;
+  text-align:center;
+}
+.qp-restricted h2{
+  margin:0 0 10px;
+  color:var(--qp-blue);
+  font-size:1.3rem;
+}
+.qp-restricted p{ margin:8px 0; color:#5a6472; }
+
 .qp-api-warning{
   background:#fff8e1;
   border:1px solid #ffe08a;

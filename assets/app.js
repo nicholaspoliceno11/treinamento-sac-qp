@@ -17,6 +17,7 @@
   ];
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
+  var ACADEMIA_TOPIC = "videos";
 
   var state = {
     session: null,        // { nome, email, perfil }
@@ -84,6 +85,21 @@
     try { localStorage.removeItem("qp_session"); } catch (e) {}
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
+  function hasAcademiaAccess() {
+    if (!state.session) return false;
+    if (isAdmin()) return true;
+    return !!state.session.acessoAcademia;
+  }
+  function canAccessTopic(topic) {
+    if (topic === ACADEMIA_TOPIC) return hasAcademiaAccess();
+    return true;
+  }
+  function effectiveTotal() {
+    return hasAcademiaAccess() ? TOTAL : TOTAL - 1;
+  }
+  function effectiveConcluidos() {
+    return state.concluidos.filter(function (t) { return canAccessTopic(t); });
+  }
 
   // -------------------------------------------------- overlay de login
   function buildOverlay() {
@@ -132,7 +148,12 @@
     api({ action: "login", email: email, senha: senha })
       .then(function (res) {
         if (res && res.ok) {
-          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil });
+          saveSession({
+            nome: res.nome,
+            email: res.email || email,
+            perfil: res.perfil,
+            acessoAcademia: !!res.acessoAcademia
+          });
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
@@ -155,7 +176,8 @@
 
   // -------------------------------------------------- progresso
   function recompute() {
-    state.percent = TOTAL ? Math.round((state.concluidos.length / TOTAL) * 100) : 0;
+    var total = effectiveTotal() || 1;
+    state.percent = Math.round((effectiveConcluidos().length / total) * 100);
   }
   function hydrate() {
     if (!state.session || !apiConfigured()) { recompute(); return Promise.resolve(); }
@@ -164,6 +186,8 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
+          if (typeof res.acessoAcademia === "boolean") state.session.acessoAcademia = res.acessoAcademia;
+          try { localStorage.setItem("qp_session", JSON.stringify(state.session)); } catch (e) {}
           recompute();
         }
       })
@@ -176,7 +200,7 @@
     recompute();
     refreshProgressUI();
     if (state.session && apiConfigured()) {
-      api({ action: "setProgress", email: state.session.email, topic: topic, done: done, total: TOTAL })
+      api({ action: "setProgress", email: state.session.email, topic: topic, done: done, total: effectiveTotal() })
         .then(function (res) {
           if (res && res.ok && res.concluidos) { state.concluidos = res.concluidos; recompute(); refreshProgressUI(); }
         })
@@ -188,7 +212,7 @@
     var bar = document.getElementById("qp-home-bar");
     if (bar) bar.style.width = state.percent + "%";
     var lbl = document.getElementById("qp-home-label");
-    if (lbl) lbl.textContent = state.percent + "% concluído (" + state.concluidos.length + "/" + TOTAL + " tópicos)";
+    if (lbl) lbl.textContent = state.percent + "% concluído (" + effectiveConcluidos().length + "/" + effectiveTotal() + " tópicos)";
     var mb = document.getElementById("qp-mini-bar");
     if (mb) mb.style.width = state.percent + "%";
     var ml = document.getElementById("qp-mini-label");
@@ -204,8 +228,58 @@
   }
   function isTopic(id) { return TOPIC_IDS.indexOf(id) >= 0; }
 
+  // -------------------------------------------------- controle de acesso por tópico
+  function applySidebarRestrictions() {
+    if (!apiConfigured() || !state.session) return;
+    var sidebar = document.querySelector(".sidebar-nav");
+    if (!sidebar) return;
+    var allowed = hasAcademiaAccess();
+    sidebar.querySelectorAll("li").forEach(function (li) {
+      var link = li.querySelector('a[href*="videos"]');
+      var label = li.querySelector(":scope > p, :scope > strong, :scope > a");
+      var text = (label && label.textContent) || "";
+      if (link || /academia/i.test(text)) {
+        li.style.display = allowed ? "" : "none";
+      }
+    });
+  }
+
+  function enforceAccess(section) {
+    if (!apiConfigured() || !state.session) return false;
+    var topic = currentTopic();
+    var blocked = document.getElementById("qp-restricted");
+    if (!canAccessTopic(topic)) {
+      Array.from(section.children).forEach(function (el) {
+        if (el.id !== "qp-restricted" && el.id !== "qp-topbar" && el.id !== "qp-injected") {
+          el.style.display = "none";
+          el.setAttribute("data-qp-hidden", "1");
+        }
+      });
+      if (!blocked) {
+        blocked = document.createElement("div");
+        blocked.id = "qp-restricted";
+        blocked.className = "qp-restricted";
+        blocked.innerHTML =
+          "<h2>🔒 Acesso restrito</h2>" +
+          "<p>Você não tem permissão para acessar a <strong>Academia</strong>.</p>" +
+          "<p class=\"qp-hint\">Solicite liberação com a gestão (coluna <em>ACESSO ACADEMIA = SIM</em> na planilha).</p>";
+        section.insertBefore(blocked, section.firstChild);
+      }
+      blocked.style.display = "";
+      return true;
+    }
+    if (blocked) blocked.style.display = "none";
+    Array.from(section.children).forEach(function (el) {
+      if (el.getAttribute("data-qp-hidden") === "1") {
+        el.style.display = "";
+        el.removeAttribute("data-qp-hidden");
+      }
+    });
+    return false;
+  }
+
   // -------------------------------------------------- render por página
-  function refreshUI() { refreshProgressUI(); renderPage(); }
+  function refreshUI() { applySidebarRestrictions(); refreshProgressUI(); renderPage(); }
 
   function renderPage() {
     // Portal só age quando a API está configurada; caso contrário o site
@@ -222,6 +296,8 @@
     if (old) old.parentNode.removeChild(old);
 
     if (!state.session) return; // overlay cobre a tela
+
+    if (enforceAccess(section)) return;
 
     var topic = currentTopic();
     var wrap = document.createElement("div");
@@ -406,7 +482,13 @@
 
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
-    hook.doneEach(function () { renderPage(); });
+    hook.doneEach(function () { renderPage(); applySidebarRestrictions(); });
+    hook.ready(function () {
+      window.addEventListener("hashchange", function () {
+        applySidebarRestrictions();
+        renderPage();
+      });
+    });
   }
   window.$docsify = window.$docsify || {};
   window.$docsify.plugins = (window.$docsify.plugins || []).concat(plugin);
