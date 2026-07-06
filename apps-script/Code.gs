@@ -97,7 +97,8 @@ function loginCols(headers) {
     senha: find("SENHA"),
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
-    andamento: find("ANDAMENTO")
+    andamento: find("ANDAMENTO"),
+    academiaAcesso: find("ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "ACADEMIA ACESSO")
   };
 }
 
@@ -122,6 +123,14 @@ function findUser(email) {
 
 function cell(u, key) { return u.cols[key] >= 0 ? norm(u.data[u.cols[key]]) : ""; }
 
+// Returns true when the user may access the Academia (🎥) topic.
+// If the column doesn't exist in the sheet, access is open (backward-compatible).
+// If the column exists, only the value "SIM" (case-insensitive, accent-tolerant) grants access.
+function checkAcademiaAccess(u) {
+  if (u.cols.academiaAcesso < 0) return true;
+  return stripAccents(cell(u, "academiaAcesso")).toUpperCase() === "SIM";
+}
+
 function handleLogin(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
@@ -134,7 +143,8 @@ function handleLogin(req) {
     ok: true,
     nome: cell(u, "nome"),
     email: cell(u, "email"),
-    perfil: cell(u, "perfil") || "Atendente"
+    perfil: cell(u, "perfil") || "Atendente",
+    academiaAcesso: checkAcademiaAccess(u)
   };
 }
 
@@ -145,7 +155,8 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
-    concluidos: completedTopics(req.email)
+    concluidos: completedTopics(req.email),
+    academiaAcesso: checkAcademiaAccess(u)
   };
 }
 

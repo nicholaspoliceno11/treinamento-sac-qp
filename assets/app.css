@@ -225,3 +225,39 @@
   font-size:.82rem;
   margin-bottom:18px;
 }
+
+/* ---------- Acesso restrito (Academia) ---------- */
+.qp-restricted{
+  text-align:center;
+  padding:48px 24px;
+  border:2px dashed #d7dbe0;
+  border-radius:18px;
+  margin:32px 0;
+  background:#fafafa;
+}
+.qp-restricted-icon{
+  font-size:3rem;
+  margin-bottom:12px;
+  line-height:1;
+}
+.qp-restricted h3{
+  color:var(--qp-blue);
+  margin:0 0 10px;
+  font-size:1.3rem;
+}
+.qp-restricted p{
+  color:#5a6472;
+  margin:6px 0;
+  font-size:.95rem;
+}
+
+/* Sidebar link indicator when Academia is restricted */
+.sidebar-nav a.qp-nav-restricted{
+  opacity:.45;
+  pointer-events:none;
+  cursor:not-allowed;
+}
+.sidebar-nav a.qp-nav-restricted::after{
+  content:" 🔒";
+  font-size:.75em;
+}

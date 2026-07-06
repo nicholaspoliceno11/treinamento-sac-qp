@@ -85,6 +85,16 @@
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
 
+  // Returns true when the logged-in user may access the Academia (🎥) topic.
+  // Admins always have access. For everyone else, the backend returns a boolean
+  // `academiaAcesso` derived from the "ACESSO ACADEMIA" column in the spreadsheet.
+  // When that column doesn't exist in the sheet, the backend returns `true` (open access).
+  function hasAcademiaAccess() {
+    if (!state.session) return false;
+    if (isAdmin()) return true;
+    return state.session.academiaAcesso !== false;
+  }
+
   // -------------------------------------------------- overlay de login
   function buildOverlay() {
     if (document.getElementById("qp-login-overlay")) return;
@@ -132,7 +142,7 @@
     api({ action: "login", email: email, senha: senha })
       .then(function (res) {
         if (res && res.ok) {
-          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil });
+          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil, academiaAcesso: res.academiaAcesso !== false });
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
@@ -164,6 +174,7 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
+          if (res.academiaAcesso !== undefined) state.session.academiaAcesso = res.academiaAcesso;
           recompute();
         }
       })
@@ -204,8 +215,22 @@
   }
   function isTopic(id) { return TOPIC_IDS.indexOf(id) >= 0; }
 
+  // -------------------------------------------------- sidebar access indicator
+  function refreshSidebarAccess() {
+    if (!apiConfigured() || !state.session) return;
+    var restricted = !hasAcademiaAccess();
+    var links = document.querySelectorAll(".sidebar-nav a");
+    links.forEach(function (link) {
+      var href = link.getAttribute("href") || "";
+      if (href.indexOf("videos") >= 0) {
+        link.classList.toggle("qp-nav-restricted", restricted);
+        link.title = restricted ? "Acesso restrito — fale com a gestão" : "";
+      }
+    });
+  }
+
   // -------------------------------------------------- render por página
-  function refreshUI() { refreshProgressUI(); renderPage(); }
+  function refreshUI() { refreshProgressUI(); renderPage(); refreshSidebarAccess(); }
 
   function renderPage() {
     // Portal só age quando a API está configurada; caso contrário o site
@@ -230,6 +255,19 @@
     if (topic === "home") {
       section.appendChild(wrap);
       refreshProgressUI();
+      return;
+    }
+
+    // Restrict Academia topic to authorised users only
+    if (topic === "videos" && !hasAcademiaAccess()) {
+      wrap.innerHTML =
+        '<div class="qp-restricted">' +
+        '  <div class="qp-restricted-icon">🔒</div>' +
+        '  <h3>Acesso Restrito</h3>' +
+        '  <p>Você não tem permissão para visualizar o conteúdo da <strong>Academia</strong>.</p>' +
+        '  <p>Fale com a gestão para liberar o acesso.</p>' +
+        '</div>';
+      section.appendChild(wrap);
       return;
     }
 
@@ -406,7 +444,7 @@
 
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
-    hook.doneEach(function () { renderPage(); });
+    hook.doneEach(function () { renderPage(); refreshSidebarAccess(); });
   }
   window.$docsify = window.$docsify || {};
   window.$docsify.plugins = (window.$docsify.plugins || []).concat(plugin);
