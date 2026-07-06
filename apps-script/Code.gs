@@ -97,8 +97,24 @@ function loginCols(headers) {
     senha: find("SENHA"),
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
-    andamento: find("ANDAMENTO")
+    andamento: find("ANDAMENTO"),
+    acessoAcademia: find("ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "ACESSO TOPICO ACADEMIA", "ACADEMIA")
   };
+}
+
+/**
+ * Acesso ao tópico "Academia" (vídeos). Regras:
+ *  - Administrador sempre tem acesso.
+ *  - Se a coluna não existir na planilha, o recurso está desativado e
+ *    todo mundo tem acesso (comportamento igual ao de antes da coluna existir).
+ *  - Se a coluna existir, só quem estiver marcado "SIM" tem acesso
+ *    (vazio ou "NAO" bloqueia).
+ */
+function computeAcessoAcademia(u) {
+  if (/admin/i.test(cell(u, "perfil"))) return true;
+  if (u.cols.acessoAcademia < 0) return true;
+  var v = stripAccents(cell(u, "acessoAcademia")).toUpperCase();
+  return v === "SIM";
 }
 
 function loginData() {
@@ -134,7 +150,8 @@ function handleLogin(req) {
     ok: true,
     nome: cell(u, "nome"),
     email: cell(u, "email"),
-    perfil: cell(u, "perfil") || "Atendente"
+    perfil: cell(u, "perfil") || "Atendente",
+    acessoAcademia: computeAcessoAcademia(u)
   };
 }
 
@@ -145,6 +162,7 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
+    acessoAcademia: computeAcessoAcademia(u),
     concluidos: completedTopics(req.email)
   };
 }

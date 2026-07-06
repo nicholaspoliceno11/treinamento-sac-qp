@@ -18,8 +18,12 @@
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
 
+  // Tópicos com acesso restrito por planilha (routeId -> chave em state.session).
+  // Ex.: "videos" (🎥 Academia) só aparece pra quem tiver ACESSO ACADEMIA = SIM.
+  var RESTRICTED_TOPICS = { videos: "acessoAcademia" };
+
   var state = {
-    session: null,        // { nome, email, perfil }
+    session: null,        // { nome, email, perfil, acessoAcademia }
     concluidos: [],       // ["onboarding", ...]
     percent: 0
   };
@@ -85,6 +89,18 @@
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
 
+  // Acesso a um tópico restrito. Administrador sempre acessa. Enquanto o
+  // flag ainda não foi carregado (antes do hydrate responder), libera por
+  // padrão pra não travar quem já está logado com sessão antiga em cache.
+  function hasTopicAccess(topic) {
+    var flag = RESTRICTED_TOPICS[topic];
+    if (!flag) return true;
+    if (isAdmin()) return true;
+    if (!state.session) return false;
+    var v = state.session[flag];
+    return v === undefined || v === null || !!v;
+  }
+
   // -------------------------------------------------- overlay de login
   function buildOverlay() {
     if (document.getElementById("qp-login-overlay")) return;
@@ -132,7 +148,7 @@
     api({ action: "login", email: email, senha: senha })
       .then(function (res) {
         if (res && res.ok) {
-          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil });
+          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil, acessoAcademia: res.acessoAcademia });
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
@@ -164,6 +180,8 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
+          if (res.acessoAcademia !== undefined) state.session.acessoAcademia = res.acessoAcademia;
+          saveSession(state.session);
           recompute();
         }
       })
@@ -216,6 +234,7 @@
 
     // topbar sempre no topo do conteúdo quando logado
     ensureTopbar(section);
+    applySidebarAccess();
 
     // remove injeções anteriores
     var old = section.querySelector("#qp-injected");
@@ -224,6 +243,13 @@
     if (!state.session) return; // overlay cobre a tela
 
     var topic = currentTopic();
+
+    if (RESTRICTED_TOPICS[topic] && !hasTopicAccess(topic)) {
+      renderAccessDenied(section);
+      refreshProgressUI();
+      return;
+    }
+
     var wrap = document.createElement("div");
     wrap.id = "qp-injected";
 
@@ -269,6 +295,50 @@
     var badge = existing.querySelector(".qp-badge");
     badge.textContent = state.session.perfil || "";
     badge.classList.toggle("qp-admin", isAdmin());
+  }
+
+  // -------- acesso restrito
+  function renderAccessDenied(section) {
+    var old = section.querySelector("#qp-injected");
+    if (old) old.parentNode.removeChild(old);
+    // remove o conteúdo original renderizado pelo Docsify (ex.: vídeos).
+    // Usa um array estático porque section.children é uma HTMLCollection viva
+    // (removendo durante o próprio forEach pularia elementos).
+    var topbar = document.getElementById("qp-topbar");
+    var children = Array.prototype.slice.call(section.children);
+    children.forEach(function (child) {
+      if (child !== topbar) child.remove();
+    });
+    var box = document.createElement("div");
+    box.id = "qp-injected";
+    box.innerHTML =
+      '<div class="qp-section">' +
+      '  <h3 class="qp-section-title">Acesso restrito</h3>' +
+      '  <p>Este tópico não está liberado para o seu usuário. Fale com a gestão ' +
+      '  se você acredita que deveria ter acesso.</p>' +
+      "</div>";
+    section.appendChild(box);
+  }
+
+  // Esconde no menu lateral os tópicos restritos que o usuário não pode ver.
+  function applySidebarAccess() {
+    var nav = document.querySelector(".sidebar-nav");
+    if (!nav) return;
+    var links = nav.querySelectorAll("a[href]");
+    Array.prototype.forEach.call(links, function (a) {
+      var href = a.getAttribute("href") || "";
+      var m = href.match(/#\/?([\w-]+)/);
+      var topic = m ? m[1].toLowerCase() : "";
+      if (!RESTRICTED_TOPICS[topic]) return;
+      // sobe até o <li> de topo (filho direto da <ul> raiz da sidebar) pra
+      // esconder a seção inteira (ex.: "🎥 Academia"), não só o link interno.
+      var li = a.closest("li");
+      while (li && li.parentElement && li.parentElement.tagName === "UL" &&
+             li.parentElement.parentElement && li.parentElement.parentElement.tagName === "LI") {
+        li = li.parentElement.parentElement;
+      }
+      if (li) li.style.display = hasTopicAccess(topic) ? "" : "none";
+    });
   }
 
   // -------- concluído
