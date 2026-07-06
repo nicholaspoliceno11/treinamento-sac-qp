@@ -28,10 +28,11 @@ mantém as senhas privadas e expõe uma pequena API que o site consome.
 Aba de usuários (linha 1 = cabeçalhos). As colunas são **detectadas pelo nome**,
 então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhecidos:
 
-| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO |
-|---|---|---|---|---|
+| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO | ACESSO ACADEMIA *(opcional)* |
+|---|---|---|---|---|---|
 
 - **PERFIL**: use `Administrador` ou `Atendente`.
+- **ACESSO ACADEMIA**: use `SIM` para liberar o tópico **🎥 Academia** no site; `NÃO` (ou vazio) bloqueia. Administradores sempre têm acesso.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
 - **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
 
@@ -43,8 +44,8 @@ As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamen
 
 | action | envia | retorna |
 |---|---|---|
-| `login` | email, senha | `{ok, nome, email, perfil}` ou `{ok:false, error:"senha"\|"usuario"}` |
-| `getState` | email | `{ok, nome, perfil, concluidos:[...]}` |
+| `login` | email, senha | `{ok, nome, email, perfil, acessoAcademia}` ou `{ok:false, error:"senha"\|"usuario"}` |
+| `getState` | email | `{ok, nome, perfil, acessoAcademia, concluidos:[...]}` |
 | `setProgress` | email, topic, done, total | `{ok, concluidos:[...], percent}` |
 | `getComments` | topic | `{ok, comments:[...]}` |
 | `addComment` | email, topic, texto | `{ok}` |

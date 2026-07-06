@@ -10,6 +10,7 @@
  * (a ORDEM não importa — as colunas são detectadas pelo nome):
  *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
  *   (a coluna "SENHA TEMPORARIA" é opcional)
+ *   (a coluna "ACESSO ACADEMIA" controla o tópico 🎥 Academia — use SIM ou NÃO)
  *
  * As abas auxiliares (Progresso, Comentarios, Conteudo) são criadas
  * automaticamente na primeira execução.
@@ -97,8 +98,21 @@ function loginCols(headers) {
     senha: find("SENHA"),
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
-    andamento: find("ANDAMENTO")
+    andamento: find("ANDAMENTO"),
+    acessoAcademia: find("ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "TOPICO ACADEMIA")
   };
+}
+
+function isSim(val) {
+  var v = stripAccents(norm(val)).toUpperCase();
+  return v === "SIM" || v === "S" || v === "YES" || v === "Y";
+}
+
+function hasAcademiaAccess(u) {
+  if (!u) return false;
+  if (/admin/i.test(cell(u, "perfil"))) return true;
+  if (u.cols.acessoAcademia < 0) return false;
+  return isSim(u.data[u.cols.acessoAcademia]);
 }
 
 function loginData() {
@@ -134,7 +148,8 @@ function handleLogin(req) {
     ok: true,
     nome: cell(u, "nome"),
     email: cell(u, "email"),
-    perfil: cell(u, "perfil") || "Atendente"
+    perfil: cell(u, "perfil") || "Atendente",
+    acessoAcademia: hasAcademiaAccess(u)
   };
 }
 
@@ -145,6 +160,7 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
+    acessoAcademia: hasAcademiaAccess(u),
     concluidos: completedTopics(req.email)
   };
 }
