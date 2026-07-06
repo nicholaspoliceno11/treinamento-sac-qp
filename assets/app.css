@@ -150,6 +150,18 @@
 .qp-complete label{ font-weight:600; color:var(--qp-blue); cursor:pointer; }
 .qp-complete.qp-done{ background:#eafbf0; border-color:#bfe9cd; }
 
+.qp-access-denied{
+  background:#fff8e1;
+  border:1px solid #ffe08a;
+  border-left:5px solid var(--qp-yellow);
+  border-radius:14px;
+  color:var(--qp-blue);
+  margin:26px 0;
+  padding:22px 24px;
+}
+.qp-access-denied h1{ margin-top:0; }
+.qp-access-denied p{ color:#5a6472; margin:8px 0; }
+
 /* ---------- Seções injetadas ---------- */
 .qp-section{ margin:30px 0; }
 .qp-section h3.qp-section-title{

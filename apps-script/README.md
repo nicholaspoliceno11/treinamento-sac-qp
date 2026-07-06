@@ -28,12 +28,15 @@ mantém as senhas privadas e expõe uma pequena API que o site consome.
 Aba de usuários (linha 1 = cabeçalhos). As colunas são **detectadas pelo nome**,
 então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhecidos:
 
-| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO |
-|---|---|---|---|---|
+| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO | ACESSO PARA TOPICO ACADEMIA |
+|---|---|---|---|---|---|
 
 - **PERFIL**: use `Administrador` ou `Atendente`.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
 - **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
+- **ACESSO PARA TOPICO ACADEMIA**: coluna opcional. Quando existir, preencha `SIM`
+  para liberar o tópico 🎥 Academia para a pessoa. Deixe vazio ou use `NAO` para
+  bloquear. Administradores continuam com acesso.
 
 As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamente.
 
@@ -43,10 +46,10 @@ As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamen
 
 | action | envia | retorna |
 |---|---|---|
-| `login` | email, senha | `{ok, nome, email, perfil}` ou `{ok:false, error:"senha"\|"usuario"}` |
-| `getState` | email | `{ok, nome, perfil, concluidos:[...]}` |
+| `login` | email, senha | `{ok, nome, email, perfil, acessos}` ou `{ok:false, error:"senha"\|"usuario"}` |
+| `getState` | email | `{ok, nome, perfil, acessos, concluidos:[...]}` |
 | `setProgress` | email, topic, done, total | `{ok, concluidos:[...], percent}` |
-| `getComments` | topic | `{ok, comments:[...]}` |
+| `getComments` | topic, email | `{ok, comments:[...]}` ou `{ok:false, error:"acesso"}` |
 | `addComment` | email, topic, texto | `{ok}` |
-| `getContent` | topic | `{ok, blocks:[...]}` |
-| `addContent` | email, topic, tipo, valor | `{ok}` ou `{ok:false, error:"perfil"}` (só admin) |
+| `getContent` | topic, email | `{ok, blocks:[...]}` ou `{ok:false, error:"acesso"}` |
+| `addContent` | email, topic, tipo, valor | `{ok}` ou `{ok:false, error:"perfil"\|"acesso"}` (só admin) |

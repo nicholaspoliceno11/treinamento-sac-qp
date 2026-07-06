@@ -10,6 +10,7 @@
  * (a ORDEM não importa — as colunas são detectadas pelo nome):
  *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
  *   (a coluna "SENHA TEMPORARIA" é opcional)
+ *   (a coluna "ACESSO PARA TOPICO ACADEMIA" é opcional; use SIM para liberar)
  *
  * As abas auxiliares (Progresso, Comentarios, Conteudo) são criadas
  * automaticamente na primeira execução.
@@ -37,9 +38,9 @@ function doPost(e) {
       case "login":       return json(handleLogin(req));
       case "getState":    return json(handleGetState(req));
       case "setProgress": return json(handleSetProgress(req));
-      case "getComments": return json({ ok: true, comments: readTable("Comentarios", req.topic) });
+      case "getComments": return json(handleGetComments(req));
       case "addComment":  return json(handleAddComment(req));
-      case "getContent":  return json({ ok: true, blocks: readTable("Conteudo", req.topic) });
+      case "getContent":  return json(handleGetContent(req));
       case "addContent":  return json(handleAddContent(req));
       case "getDuvidas":  return json({ ok: true, duvidas: listDuvidas() });
       case "addDuvida":   return json(handleAddDuvida(req));
@@ -97,7 +98,13 @@ function loginCols(headers) {
     senha: find("SENHA"),
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
-    andamento: find("ANDAMENTO")
+    andamento: find("ANDAMENTO"),
+    acessoAcademia: find(
+      "ACESSO PARA TOPICO ACADEMIA",
+      "ACESSO TOPICO ACADEMIA",
+      "ACESSO ACADEMIA",
+      "ACADEMIA"
+    )
   };
 }
 
@@ -122,6 +129,27 @@ function findUser(email) {
 
 function cell(u, key) { return u.cols[key] >= 0 ? norm(u.data[u.cols[key]]) : ""; }
 
+function isSim(value) {
+  var v = stripAccents(norm(value)).toUpperCase();
+  return v === "SIM" || v === "S" || v === "YES" || v === "TRUE" || v === "1";
+}
+
+function hasAcademiaAccess(u) {
+  if (!u) return false;
+  if (/admin/i.test(cell(u, "perfil"))) return true;
+  if (u.cols.acessoAcademia < 0) return true;
+  return isSim(u.data[u.cols.acessoAcademia]);
+}
+
+function topicAccessAllowed(email, topic) {
+  if (norm(topic) !== "videos") return true;
+  return hasAcademiaAccess(findUser(email));
+}
+
+function accessPayload(u) {
+  return { academia: hasAcademiaAccess(u) };
+}
+
 function handleLogin(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
@@ -134,7 +162,8 @@ function handleLogin(req) {
     ok: true,
     nome: cell(u, "nome"),
     email: cell(u, "email"),
-    perfil: cell(u, "perfil") || "Atendente"
+    perfil: cell(u, "perfil") || "Atendente",
+    acessos: accessPayload(u)
   };
 }
 
@@ -145,6 +174,7 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
+    acessos: accessPayload(u),
     concluidos: completedTopics(req.email)
   };
 }
@@ -188,6 +218,7 @@ function completedTopics(email) {
 }
 
 function handleSetProgress(req) {
+  if (!topicAccessAllowed(req.email, req.topic)) return { ok: false, error: "acesso" };
   var sh = progressoSheet();
   var data = sh.getDataRange().getValues();
   var email = norm(req.email), topic = norm(req.topic);
@@ -214,9 +245,15 @@ function writeAndamento(email, percent) {
 }
 
 /* ---------------- Comentários e Conteúdo ---------------- */
+function handleGetComments(req) {
+  if (!topicAccessAllowed(req.email, req.topic)) return { ok: false, error: "acesso", comments: [] };
+  return { ok: true, comments: readTable("Comentarios", req.topic) };
+}
+
 function handleAddComment(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
+  if (!topicAccessAllowed(req.email, req.topic)) return { ok: false, error: "acesso" };
   var sh = ensureSheet("Comentarios", ["TOPICO", "NOME", "EMAIL", "PERFIL", "TEXTO", "TS"]);
   sh.appendRow([
     norm(req.topic), cell(u, "nome"), cell(u, "email"),
@@ -225,10 +262,16 @@ function handleAddComment(req) {
   return { ok: true };
 }
 
+function handleGetContent(req) {
+  if (!topicAccessAllowed(req.email, req.topic)) return { ok: false, error: "acesso", blocks: [] };
+  return { ok: true, blocks: readTable("Conteudo", req.topic) };
+}
+
 function handleAddContent(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
   if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
+  if (!topicAccessAllowed(req.email, req.topic)) return { ok: false, error: "acesso" };
   var sh = ensureSheet("Conteudo", ["TOPICO", "TIPO", "VALOR", "AUTOR", "EMAIL", "TS"]);
   sh.appendRow([
     norm(req.topic), norm(req.tipo), norm(req.valor),

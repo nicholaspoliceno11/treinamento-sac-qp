@@ -17,6 +17,9 @@
   ];
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
+  var RESTRICTED_TOPICS = {
+    videos: { accessKey: "academia", titulo: "Academia / Treinamentos" }
+  };
 
   var state = {
     session: null,        // { nome, email, perfil }
@@ -132,7 +135,7 @@
     api({ action: "login", email: email, senha: senha })
       .then(function (res) {
         if (res && res.ok) {
-          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil });
+          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil, acessos: res.acessos || {} });
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
@@ -164,6 +167,8 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
+          state.session.acessos = res.acessos || {};
+          saveSession(state.session);
           recompute();
         }
       })
@@ -203,6 +208,13 @@
     return h;
   }
   function isTopic(id) { return TOPIC_IDS.indexOf(id) >= 0; }
+  function canAccessTopic(id) {
+    var cfg = RESTRICTED_TOPICS[id];
+    if (!cfg) return true;
+    if (isAdmin()) return true;
+    var acessos = (state.session && state.session.acessos) || {};
+    return acessos[cfg.accessKey] === true;
+  }
 
   // -------------------------------------------------- render por página
   function refreshUI() { refreshProgressUI(); renderPage(); }
@@ -227,6 +239,13 @@
     var wrap = document.createElement("div");
     wrap.id = "qp-injected";
 
+    if (!canAccessTopic(topic)) {
+      replaceRestrictedContent(section);
+      wrap.appendChild(buildAccessDenied(topic));
+      section.appendChild(wrap);
+      return;
+    }
+
     if (topic === "home") {
       section.appendChild(wrap);
       refreshProgressUI();
@@ -246,6 +265,24 @@
     refreshProgressUI();
 
     if (apiConfigured()) { loadContent(topic); loadComments(topic); }
+  }
+
+  function replaceRestrictedContent(section) {
+    var topbar = document.getElementById("qp-topbar");
+    Array.prototype.slice.call(section.childNodes).forEach(function (node) {
+      if (node !== topbar) section.removeChild(node);
+    });
+  }
+
+  function buildAccessDenied(topic) {
+    var cfg = RESTRICTED_TOPICS[topic] || { titulo: "este tópico" };
+    var box = document.createElement("div");
+    box.className = "qp-access-denied";
+    box.innerHTML =
+      '<h1>Acesso restrito</h1>' +
+      '<p>O tópico <strong>' + esc(cfg.titulo) + '</strong> está liberado apenas para pessoas autorizadas pela gestão.</p>' +
+      '<p>Para liberar, marque <strong>SIM</strong> na coluna <strong>ACESSO PARA TOPICO ACADEMIA</strong> da aba <strong>Login Treinamento</strong>.</p>';
+    return box;
   }
 
   function ensureTopbar(section) {
@@ -316,7 +353,7 @@
   }
 
   function loadContent(topic) {
-    api({ action: "getContent", topic: topic })
+    api({ action: "getContent", topic: topic, email: state.session && state.session.email })
       .then(function (res) { renderContent((res && res.blocks) || []); })
       .catch(function () { renderContent([]); });
   }
@@ -374,7 +411,7 @@
   }
 
   function loadComments(topic) {
-    api({ action: "getComments", topic: topic })
+    api({ action: "getComments", topic: topic, email: state.session && state.session.email })
       .then(function (res) { renderComments((res && res.comments) || []); })
       .catch(function () { renderComments([]); });
   }
@@ -406,6 +443,13 @@
 
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
+    hook.beforeEach(function (content, next) {
+      if (apiConfigured() && state.session && !canAccessTopic(currentTopic())) {
+        next("# Acesso restrito\n\nEste tópico está liberado apenas para pessoas autorizadas pela gestão.");
+        return;
+      }
+      next(content);
+    });
     hook.doneEach(function () { renderPage(); });
   }
   window.$docsify = window.$docsify || {};
