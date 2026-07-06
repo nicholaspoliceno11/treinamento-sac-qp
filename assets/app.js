@@ -126,16 +126,25 @@
     var ov = document.createElement("div");
     ov.id = "qp-login-overlay";
     ov.innerHTML =
-      '<form class="qp-login-card" id="qp-login-form" autocomplete="on">' +
-      '  <h2>Treinamento Quero Passagem</h2>' +
-      '  <p class="qp-sub">Entre em contato com a gestão para atualizar a senha.</p>' +
-      '  <label for="qp-email">E-mail</label>' +
-      '  <input id="qp-email" name="email" type="email" required placeholder="seu.email@empresa.com">' +
-      '  <label for="qp-senha">Senha</label>' +
-      '  <input id="qp-senha" name="password" type="password" required placeholder="Sua senha">' +
-      '  <button class="qp-btn qp-btn-primary" type="submit" id="qp-login-btn">Entrar</button>' +
-      '  <div class="qp-login-msg" id="qp-login-msg"></div>' +
-      '</form>';
+      '<div class="qp-login-shell">' +
+      '  <div class="qp-login-hero">' +
+      '    <img class="qp-login-mila" src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">' +
+      '    <div class="qp-login-welcome">' +
+      '      <strong>Olá! Eu sou a Mila 👋</strong>' +
+      '      <p>Sua Agente de Treinamento. Vamos juntos nessa jornada de excelência!</p>' +
+      '    </div>' +
+      '  </div>' +
+      '  <form class="qp-login-card" id="qp-login-form" autocomplete="on">' +
+      '    <h2>Treinamento Quero Passagem</h2>' +
+      '    <p class="qp-sub">Entre em contato com a gestão para atualizar a senha.</p>' +
+      '    <label for="qp-email">E-mail</label>' +
+      '    <input id="qp-email" name="email" type="email" required placeholder="seu.email@empresa.com">' +
+      '    <label for="qp-senha">Senha</label>' +
+      '    <input id="qp-senha" name="password" type="password" required placeholder="Sua senha">' +
+      '    <button class="qp-btn qp-btn-primary" type="submit" id="qp-login-btn">Entrar</button>' +
+      '    <div class="qp-login-msg" id="qp-login-msg"></div>' +
+      '  </form>' +
+      '</div>';
     document.body.appendChild(ov);
     document.getElementById("qp-login-form").addEventListener("submit", onLogin);
   }

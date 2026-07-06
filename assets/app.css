@@ -21,14 +21,67 @@
 }
 #qp-login-overlay.qp-show{ display:flex; }
 
-.qp-login-card{
+.qp-login-shell{
+  display:flex;
+  align-items:stretch;
   width:100%;
-  max-width:400px;
+  max-width:860px;
   background:#fff;
-  border-radius:18px;
-  padding:34px 30px;
-  box-shadow:0 18px 50px rgba(0,0,0,.35);
+  border-radius:24px;
+  overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.38);
   border-top:6px solid var(--qp-yellow);
+}
+
+.qp-login-hero{
+  flex:0 0 42%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  padding:36px 28px;
+  background:linear-gradient(160deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+  text-align:center;
+}
+
+.qp-login-mila{
+  width:min(220px,100%);
+  height:auto;
+  filter:drop-shadow(0 12px 22px rgba(0,0,0,.28));
+}
+
+.qp-login-welcome{
+  color:#fff;
+  max-width:260px;
+}
+
+.qp-login-welcome strong{
+  display:block;
+  font-size:1.2rem;
+  margin-bottom:8px;
+  letter-spacing:-.01em;
+}
+
+.qp-login-welcome p{
+  margin:0;
+  font-size:.92rem;
+  line-height:1.55;
+  color:#eaf1ff;
+}
+
+.qp-login-card{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-width:0;
+  background:#fff;
+  border-radius:0;
+  padding:40px 36px;
+  box-shadow:none;
+  border-top:none;
+  max-width:none;
 }
 .qp-login-card h2{
   margin:0 0 4px;
@@ -86,6 +139,29 @@
 }
 .qp-login-msg.qp-error{ display:block; background:#fdecec; color:#b3261e; border:1px solid #f5c2c0; }
 .qp-login-msg.qp-info{ display:block; background:#eef4ff; color:#0a3d91; border:1px solid #c9dbff; }
+
+body:has(#qp-login-overlay.qp-show) #mila-float{
+  opacity:0;
+  pointer-events:none;
+}
+
+@media (max-width:720px){
+  .qp-login-shell{
+    flex-direction:column;
+    max-width:420px;
+  }
+  .qp-login-hero{
+    flex:none;
+    flex-direction:row;
+    text-align:left;
+    padding:24px 22px;
+    gap:14px;
+  }
+  .qp-login-mila{ width:110px; }
+  .qp-login-welcome strong{ font-size:1rem; }
+  .qp-login-welcome p{ font-size:.85rem; }
+  .qp-login-card{ padding:28px 24px 32px; }
+}
 
 /* ---------- Barra superior do usuário ---------- */
 #qp-topbar{
