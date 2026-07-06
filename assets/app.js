@@ -20,9 +20,10 @@
   var ACADEMIA_TOPIC = "videos";
 
   var state = {
-    session: null,        // { nome, email, perfil }
+    session: null,        // { nome, email, perfil, acessoAcademia }
     concluidos: [],       // ["onboarding", ...]
-    percent: 0
+    percent: 0,
+    accessResolved: false // true após login/hydrate confirmarem acesso na API
   };
 
   // -------------------------------------------------- utilidades
@@ -73,6 +74,8 @@
       var raw = localStorage.getItem("qp_session");
       state.session = raw ? JSON.parse(raw) : null;
     } catch (e) { state.session = null; }
+    state.accessResolved = false;
+    if (state.session) delete state.session.acessoAcademia;
   }
   function saveSession(s) {
     state.session = s;
@@ -82,6 +85,7 @@
     state.session = null;
     state.concluidos = [];
     state.percent = 0;
+    state.accessResolved = false;
     try { localStorage.removeItem("qp_session"); } catch (e) {}
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
@@ -96,6 +100,7 @@
   function hasAcademiaAccess() {
     if (!state.session) return false;
     if (isAdmin()) return true;
+    if (!state.accessResolved) return false;
     return parseAcademiaAccess(state.session.acessoAcademia);
   }
   function canAccessTopic(topic) {
@@ -162,6 +167,7 @@
             perfil: res.perfil,
             acessoAcademia: parseAcademiaAccess(res.acessoAcademia)
           });
+          state.accessResolved = true;
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
@@ -195,6 +201,7 @@
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
           state.session.acessoAcademia = parseAcademiaAccess(res.acessoAcademia);
+          state.accessResolved = true;
           try { localStorage.setItem("qp_session", JSON.stringify(state.session)); } catch (e) {}
           recompute();
         }

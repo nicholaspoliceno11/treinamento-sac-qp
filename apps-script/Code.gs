@@ -127,6 +127,16 @@ function isNao(val) {
   return v === "NAO" || v === "N" || v === "NO" || v === "FALSE";
 }
 
+function isAccessError(val) {
+  var s = stripAccents(norm(val)).toUpperCase();
+  return !s || s.indexOf("REF") >= 0 || s.indexOf("ERROR") >= 0 || s.indexOf("N/A") >= 0 || s.indexOf("VALOR") >= 0;
+}
+
+function acessoAcademiaVal(u) {
+  if (!u || u.cols.acessoAcademia < 0) return "";
+  return loginSheet().getRange(u.row, u.cols.acessoAcademia + 1).getDisplayValue();
+}
+
 function academiaSheetCols(headers) {
   var H = (headers || []).map(headerKey);
   function find() {
@@ -172,9 +182,10 @@ function academiaAccessFromSheet(u) {
 function hasAcademiaAccess(u) {
   if (!u) return false;
   if (/admin/i.test(cell(u, "perfil"))) return true;
-  // Opção A: coluna na aba Login Treinamento
+  // Opção A: coluna na aba Login Treinamento (lê o texto exibido: Sim/Não)
   if (u.cols.acessoAcademia >= 0) {
-    var val = u.data[u.cols.acessoAcademia];
+    var val = acessoAcademiaVal(u);
+    if (isAccessError(val)) return false;
     if (isNao(val)) return false;
     return isSim(val);
   }
