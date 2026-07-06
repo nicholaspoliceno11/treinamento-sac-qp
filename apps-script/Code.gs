@@ -71,12 +71,18 @@ function normPw(s) {
 
 function stripAccents(s) {
   return String(s == null ? "" : s)
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "")
     .replace(/[ÁÀÂÃÄ]/g, "A").replace(/[áàâãä]/g, "a")
     .replace(/[ÉÈÊË]/g, "E").replace(/[éèêë]/g, "e")
     .replace(/[ÍÌÎÏ]/g, "I").replace(/[íìîï]/g, "i")
     .replace(/[ÓÒÔÕÖ]/g, "O").replace(/[óòôõö]/g, "o")
     .replace(/[ÚÙÛÜ]/g, "U").replace(/[úùûü]/g, "u")
-    .replace(/[Çç]/g, "C");
+    .replace(/[Çç]/g, "C")
+    .replace(/[Ññ]/g, "N");
+}
+
+function headerKey(h) {
+  return stripAccents(norm(h)).toUpperCase();
 }
 
 function loginSheet() {
@@ -86,7 +92,7 @@ function loginSheet() {
 
 // Detecta os índices das colunas pelo nome do cabeçalho (robusto a ordem/edições).
 function loginCols(headers) {
-  var H = (headers || []).map(function (h) { return stripAccents(norm(h)).toUpperCase(); });
+  var H = (headers || []).map(headerKey);
   function find() {
     for (var a = 0; a < arguments.length; a++) {
       var idx = H.indexOf(arguments[a]);
@@ -106,12 +112,23 @@ function loginCols(headers) {
 }
 
 function isSim(val) {
+  if (val === true || val === 1) return true;
+  if (val === false || val === 0) return false;
+  if (typeof val === "number") return false;
   var v = stripAccents(norm(val)).toUpperCase();
   return v === "SIM" || v === "S" || v === "YES" || v === "Y";
 }
 
+function isNao(val) {
+  if (val === false || val === 0) return true;
+  if (val === true || val === 1) return false;
+  if (typeof val === "number") return true;
+  var v = stripAccents(norm(val)).toUpperCase();
+  return v === "NAO" || v === "N" || v === "NO" || v === "FALSE";
+}
+
 function academiaSheetCols(headers) {
-  var H = (headers || []).map(function (h) { return stripAccents(norm(h)).toUpperCase(); });
+  var H = (headers || []).map(headerKey);
   function find() {
     for (var a = 0; a < arguments.length; a++) {
       var idx = H.indexOf(arguments[a]);
@@ -156,7 +173,11 @@ function hasAcademiaAccess(u) {
   if (!u) return false;
   if (/admin/i.test(cell(u, "perfil"))) return true;
   // Opção A: coluna na aba Login Treinamento
-  if (u.cols.acessoAcademia >= 0) return isSim(u.data[u.cols.acessoAcademia]);
+  if (u.cols.acessoAcademia >= 0) {
+    var val = u.data[u.cols.acessoAcademia];
+    if (isNao(val)) return false;
+    return isSim(val);
+  }
   // Opção B: aba separada "ACESSO ACADEMIA"
   var fromSheet = academiaAccessFromSheet(u);
   if (fromSheet !== null) return fromSheet;
@@ -197,7 +218,7 @@ function handleLogin(req) {
     nome: cell(u, "nome"),
     email: cell(u, "email"),
     perfil: cell(u, "perfil") || "Atendente",
-    acessoAcademia: hasAcademiaAccess(u)
+    acessoAcademia: !!hasAcademiaAccess(u)
   };
 }
 
@@ -208,7 +229,7 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
-    acessoAcademia: hasAcademiaAccess(u),
+    acessoAcademia: !!hasAcademiaAccess(u),
     concluidos: completedTopics(req.email)
   };
 }

@@ -85,10 +85,18 @@
     try { localStorage.removeItem("qp_session"); } catch (e) {}
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
+  function parseAcademiaAccess(val) {
+    if (val === true || val === 1) return true;
+    if (val === false || val === 0 || val == null) return false;
+    if (typeof val === "number") return false;
+    var v = String(val).trim().toLowerCase();
+    try { v = v.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch (e) {}
+    return v === "sim" || v === "s" || v === "yes" || v === "y";
+  }
   function hasAcademiaAccess() {
     if (!state.session) return false;
     if (isAdmin()) return true;
-    return !!state.session.acessoAcademia;
+    return parseAcademiaAccess(state.session.acessoAcademia);
   }
   function canAccessTopic(topic) {
     if (topic === ACADEMIA_TOPIC) return hasAcademiaAccess();
@@ -152,7 +160,7 @@
             nome: res.nome,
             email: res.email || email,
             perfil: res.perfil,
-            acessoAcademia: !!res.acessoAcademia
+            acessoAcademia: parseAcademiaAccess(res.acessoAcademia)
           });
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
@@ -186,7 +194,7 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
-          if (typeof res.acessoAcademia === "boolean") state.session.acessoAcademia = res.acessoAcademia;
+          state.session.acessoAcademia = parseAcademiaAccess(res.acessoAcademia);
           try { localStorage.setItem("qp_session", JSON.stringify(state.session)); } catch (e) {}
           recompute();
         }
@@ -235,11 +243,13 @@
     if (!sidebar) return;
     var allowed = hasAcademiaAccess();
     sidebar.querySelectorAll("li").forEach(function (li) {
-      var link = li.querySelector('a[href*="videos"]');
-      var label = li.querySelector(":scope > p, :scope > strong, :scope > a");
-      var text = (label && label.textContent) || "";
-      if (link || /academia/i.test(text)) {
-        li.style.display = allowed ? "" : "none";
+      var isAcademia = !!li.querySelector('a[href*="videos"]') ||
+        /academia/i.test(((li.querySelector("p, strong") || {}).textContent || ""));
+      if (!isAcademia) return;
+      li.style.display = allowed ? "" : "none";
+      var parentLi = li.parentElement && li.parentElement.closest("li");
+      if (parentLi && /academia/i.test(parentLi.textContent || "")) {
+        parentLi.style.display = allowed ? "" : "none";
       }
     });
   }
