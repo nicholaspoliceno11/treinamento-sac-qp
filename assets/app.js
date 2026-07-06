@@ -15,11 +15,9 @@
     { id: "cms", titulo: "CMS" },
     { id: "videos", titulo: "Academia / Treinamentos" }
   ];
-  var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
-  var TOTAL = TOPICS.length;
 
   var state = {
-    session: null,        // { nome, email, perfil }
+    session: null,        // { nome, email, perfil, acessoAcademia }
     concluidos: [],       // ["onboarding", ...]
     percent: 0
   };
@@ -84,6 +82,11 @@
     try { localStorage.removeItem("qp_session"); } catch (e) {}
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
+  function hasAcademiaAccess() { return !state.session || state.session.acessoAcademia !== false; }
+  function canAccessTopic(topic) { return topic !== "videos" || hasAcademiaAccess(); }
+  function availableTopics() { return TOPICS.filter(function (t) { return canAccessTopic(t.id); }); }
+  function availableTopicIds() { return availableTopics().map(function (t) { return t.id; }); }
+  function isTrackableTopic(id) { return availableTopicIds().indexOf(id) >= 0; }
 
   // -------------------------------------------------- overlay de login
   function buildOverlay() {
@@ -132,7 +135,12 @@
     api({ action: "login", email: email, senha: senha })
       .then(function (res) {
         if (res && res.ok) {
-          saveSession({ nome: res.nome, email: res.email || email, perfil: res.perfil });
+          saveSession({
+            nome: res.nome,
+            email: res.email || email,
+            perfil: res.perfil,
+            acessoAcademia: res.acessoAcademia
+          });
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
@@ -155,7 +163,10 @@
 
   // -------------------------------------------------- progresso
   function recompute() {
-    state.percent = TOTAL ? Math.round((state.concluidos.length / TOTAL) * 100) : 0;
+    var ids = availableTopicIds();
+    var total = ids.length;
+    var concluidos = state.concluidos.filter(function (topic) { return ids.indexOf(topic) >= 0; }).length;
+    state.percent = total ? Math.round((concluidos / total) * 100) : 0;
   }
   function hydrate() {
     if (!state.session || !apiConfigured()) { recompute(); return Promise.resolve(); }
@@ -164,6 +175,7 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
+          if (typeof res.acessoAcademia === "boolean") state.session.acessoAcademia = res.acessoAcademia;
           recompute();
         }
       })
@@ -171,12 +183,13 @@
   }
 
   function setProgress(topic, done) {
+    if (!isTrackableTopic(topic)) return;
     if (done && state.concluidos.indexOf(topic) < 0) state.concluidos.push(topic);
     if (!done) state.concluidos = state.concluidos.filter(function (t) { return t !== topic; });
     recompute();
     refreshProgressUI();
     if (state.session && apiConfigured()) {
-      api({ action: "setProgress", email: state.session.email, topic: topic, done: done, total: TOTAL })
+      api({ action: "setProgress", email: state.session.email, topic: topic, done: done, total: availableTopicIds().length })
         .then(function (res) {
           if (res && res.ok && res.concluidos) { state.concluidos = res.concluidos; recompute(); refreshProgressUI(); }
         })
@@ -185,10 +198,12 @@
   }
 
   function refreshProgressUI() {
+    var total = availableTopicIds().length;
+    var concluidos = state.concluidos.filter(function (topic) { return isTrackableTopic(topic); }).length;
     var bar = document.getElementById("qp-home-bar");
     if (bar) bar.style.width = state.percent + "%";
     var lbl = document.getElementById("qp-home-label");
-    if (lbl) lbl.textContent = state.percent + "% concluído (" + state.concluidos.length + "/" + TOTAL + " tópicos)";
+    if (lbl) lbl.textContent = state.percent + "% concluído (" + concluidos + "/" + total + " tópicos)";
     var mb = document.getElementById("qp-mini-bar");
     if (mb) mb.style.width = state.percent + "%";
     var ml = document.getElementById("qp-mini-label");
@@ -202,7 +217,37 @@
     if (!h || /^readme$/i.test(h)) return "home";
     return h;
   }
-  function isTopic(id) { return TOPIC_IDS.indexOf(id) >= 0; }
+  function isAcademiaHref(href) {
+    var h = String(href || "").trim().toLowerCase();
+    return /#\/videos(?:$|[/?#])/.test(h) || /videos\.md(?:$|[?#])/.test(h);
+  }
+  function onBlockedAcademiaClick(ev) {
+    ev.preventDefault();
+    alert("Você não tem acesso ao tópico Academia. Solicite liberação à gestão.");
+  }
+  function refreshSidebarTopicAccess() {
+    var links = document.querySelectorAll("a[href]");
+    var blocked = state.session && !hasAcademiaAccess();
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i];
+      if (!isAcademiaHref(link.getAttribute("href"))) continue;
+      if (blocked) {
+        link.classList.add("qp-link-disabled");
+        link.setAttribute("aria-disabled", "true");
+        if (!link.dataset.qpAcademiaBlocked) {
+          link.addEventListener("click", onBlockedAcademiaClick);
+          link.dataset.qpAcademiaBlocked = "1";
+        }
+      } else {
+        link.classList.remove("qp-link-disabled");
+        link.removeAttribute("aria-disabled");
+        if (link.dataset.qpAcademiaBlocked) {
+          link.removeEventListener("click", onBlockedAcademiaClick);
+          delete link.dataset.qpAcademiaBlocked;
+        }
+      }
+    }
+  }
 
   // -------------------------------------------------- render por página
   function refreshUI() { refreshProgressUI(); renderPage(); }
@@ -213,6 +258,7 @@
     if (!apiConfigured()) return;
     var section = document.querySelector(".markdown-section");
     if (!section) return;
+    refreshSidebarTopicAccess();
 
     // topbar sempre no topo do conteúdo quando logado
     ensureTopbar(section);
@@ -233,8 +279,14 @@
       return;
     }
 
+    if (!canAccessTopic(topic)) {
+      wrap.appendChild(buildTopicBlocked(topic));
+      section.appendChild(wrap);
+      return;
+    }
+
     // Bloco "concluído" (só nos tópicos que contam progresso)
-    if (isTopic(topic)) wrap.appendChild(buildComplete(topic));
+    if (isTrackableTopic(topic)) wrap.appendChild(buildComplete(topic));
 
     // Conteúdo adicional (admin adiciona; todos veem)
     wrap.appendChild(buildContentSection(topic));
@@ -246,6 +298,18 @@
     refreshProgressUI();
 
     if (apiConfigured()) { loadContent(topic); loadComments(topic); }
+  }
+
+  function buildTopicBlocked(topic) {
+    var topicInfo = TOPICS.find(function (t) { return t.id === topic; });
+    var topicName = topicInfo ? topicInfo.titulo : topic;
+    var sec = document.createElement("div");
+    sec.className = "qp-section";
+    sec.innerHTML =
+      '<h3 class="qp-section-title">Acesso restrito</h3>' +
+      '<p>Este tópico é liberado somente para usuários autorizados.</p>' +
+      '<p>Se você precisa acessar <strong>' + esc(topicName) + '</strong>, fale com a gestão para marcar "SIM" na coluna de acesso da Academia na planilha.</p>';
+    return sec;
   }
 
   function ensureTopbar(section) {
@@ -316,7 +380,7 @@
   }
 
   function loadContent(topic) {
-    api({ action: "getContent", topic: topic })
+    api({ action: "getContent", topic: topic, email: state.session && state.session.email })
       .then(function (res) { renderContent((res && res.blocks) || []); })
       .catch(function () { renderContent([]); });
   }
@@ -374,7 +438,7 @@
   }
 
   function loadComments(topic) {
-    api({ action: "getComments", topic: topic })
+    api({ action: "getComments", topic: topic, email: state.session && state.session.email })
       .then(function (res) { renderComments((res && res.comments) || []); })
       .catch(function () { renderComments([]); });
   }

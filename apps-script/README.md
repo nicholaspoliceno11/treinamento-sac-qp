@@ -34,6 +34,7 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
 - **PERFIL**: use `Administrador` ou `Atendente`.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
 - **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
+- **Restrição da Academia (opcional)**: crie uma coluna com nome como `Acesso para topico Academia` e preencha com `SIM`/`NÃO` por usuário. Sem essa coluna (ou em branco), o acesso permanece liberado por padrão.
 
 As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamente.
 
@@ -43,10 +44,10 @@ As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamen
 
 | action | envia | retorna |
 |---|---|---|
-| `login` | email, senha | `{ok, nome, email, perfil}` ou `{ok:false, error:"senha"\|"usuario"}` |
-| `getState` | email | `{ok, nome, perfil, concluidos:[...]}` |
+| `login` | email, senha | `{ok, nome, email, perfil, acessoAcademia}` ou `{ok:false, error:"senha"\|"usuario"}` |
+| `getState` | email | `{ok, nome, perfil, concluidos:[...], acessoAcademia}` |
 | `setProgress` | email, topic, done, total | `{ok, concluidos:[...], percent}` |
-| `getComments` | topic | `{ok, comments:[...]}` |
+| `getComments` | topic, email | `{ok, comments:[...]}` |
 | `addComment` | email, topic, texto | `{ok}` |
-| `getContent` | topic | `{ok, blocks:[...]}` |
+| `getContent` | topic, email | `{ok, blocks:[...]}` |
 | `addContent` | email, topic, tipo, valor | `{ok}` ou `{ok:false, error:"perfil"}` (só admin) |

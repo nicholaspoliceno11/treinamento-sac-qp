@@ -225,3 +225,9 @@
   font-size:.82rem;
   margin-bottom:18px;
 }
+
+a.qp-link-disabled{
+  opacity:.45;
+  pointer-events:auto;
+  cursor:not-allowed;
+}

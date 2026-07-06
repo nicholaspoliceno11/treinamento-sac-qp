@@ -9,7 +9,7 @@
  * A aba de login precisa ter, na linha 1, cabeçalhos com estes nomes
  * (a ORDEM não importa — as colunas são detectadas pelo nome):
  *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
- *   (a coluna "SENHA TEMPORARIA" é opcional)
+ *   (as colunas "SENHA TEMPORARIA" e "ACESSO PARA TOPICO ACADEMIA" são opcionais)
  *
  * As abas auxiliares (Progresso, Comentarios, Conteudo) são criadas
  * automaticamente na primeira execução.
@@ -37,9 +37,9 @@ function doPost(e) {
       case "login":       return json(handleLogin(req));
       case "getState":    return json(handleGetState(req));
       case "setProgress": return json(handleSetProgress(req));
-      case "getComments": return json({ ok: true, comments: readTable("Comentarios", req.topic) });
+      case "getComments": return json(handleGetComments(req));
       case "addComment":  return json(handleAddComment(req));
-      case "getContent":  return json({ ok: true, blocks: readTable("Conteudo", req.topic) });
+      case "getContent":  return json(handleGetContent(req));
       case "addContent":  return json(handleAddContent(req));
       case "getDuvidas":  return json({ ok: true, duvidas: listDuvidas() });
       case "addDuvida":   return json(handleAddDuvida(req));
@@ -97,7 +97,14 @@ function loginCols(headers) {
     senha: find("SENHA"),
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
-    andamento: find("ANDAMENTO")
+    andamento: find("ANDAMENTO"),
+    acessoAcademia: find(
+      "ACESSO PARA TOPICO ACADEMIA",
+      "ACESSO PARA TOPICO DE ACADEMIA",
+      "ACESSO TOPICO ACADEMIA",
+      "ACESSO ACADEMIA",
+      "TOPICO ACADEMIA"
+    )
   };
 }
 
@@ -122,6 +129,24 @@ function findUser(email) {
 
 function cell(u, key) { return u.cols[key] >= 0 ? norm(u.data[u.cols[key]]) : ""; }
 
+function parseYesNo(value, defaultValue) {
+  var v = stripAccents(norm(value)).toUpperCase();
+  if (v === "SIM" || v === "S" || v === "TRUE" || v === "1" || v === "YES") return true;
+  if (v === "NAO" || v === "N" || v === "FALSE" || v === "0" || v === "NO") return false;
+  return defaultValue;
+}
+
+function hasAcademiaAccess(u) {
+  return parseYesNo(cell(u, "acessoAcademia"), true);
+}
+
+function canAccessTopic(email, topic) {
+  if (norm(topic) !== "videos") return true;
+  var u = findUser(email);
+  if (!u) return false;
+  return hasAcademiaAccess(u);
+}
+
 function handleLogin(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
@@ -134,7 +159,8 @@ function handleLogin(req) {
     ok: true,
     nome: cell(u, "nome"),
     email: cell(u, "email"),
-    perfil: cell(u, "perfil") || "Atendente"
+    perfil: cell(u, "perfil") || "Atendente",
+    acessoAcademia: hasAcademiaAccess(u)
   };
 }
 
@@ -145,7 +171,8 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
-    concluidos: completedTopics(req.email)
+    concluidos: completedTopics(req.email),
+    acessoAcademia: hasAcademiaAccess(u)
   };
 }
 
@@ -162,6 +189,7 @@ function handleDebug(req) {
     out.found = true;
     out.rowNumber = u.row;
     out.perfil = cell(u, "perfil");
+    out.acessoAcademia = hasAcademiaAccess(u);
     out.provLen = normPw(req.senha).length;
     out.senhaLen = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]).length : -1;
     out.senhaTempLen = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]).length : -1;
@@ -188,6 +216,7 @@ function completedTopics(email) {
 }
 
 function handleSetProgress(req) {
+  if (!canAccessTopic(req.email, req.topic)) return { ok: false, error: "acesso" };
   var sh = progressoSheet();
   var data = sh.getDataRange().getValues();
   var email = norm(req.email), topic = norm(req.topic);
@@ -214,9 +243,15 @@ function writeAndamento(email, percent) {
 }
 
 /* ---------------- Comentários e Conteúdo ---------------- */
+function handleGetComments(req) {
+  if (!canAccessTopic(req.email, req.topic)) return { ok: false, error: "acesso", comments: [] };
+  return { ok: true, comments: readTable("Comentarios", req.topic) };
+}
+
 function handleAddComment(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
+  if (!canAccessTopic(req.email, req.topic)) return { ok: false, error: "acesso" };
   var sh = ensureSheet("Comentarios", ["TOPICO", "NOME", "EMAIL", "PERFIL", "TEXTO", "TS"]);
   sh.appendRow([
     norm(req.topic), cell(u, "nome"), cell(u, "email"),
@@ -225,9 +260,15 @@ function handleAddComment(req) {
   return { ok: true };
 }
 
+function handleGetContent(req) {
+  if (!canAccessTopic(req.email, req.topic)) return { ok: false, error: "acesso", blocks: [] };
+  return { ok: true, blocks: readTable("Conteudo", req.topic) };
+}
+
 function handleAddContent(req) {
   var u = findUser(req.email);
   if (!u) return { ok: false, error: "usuario" };
+  if (!canAccessTopic(req.email, req.topic)) return { ok: false, error: "acesso" };
   if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
   var sh = ensureSheet("Conteudo", ["TOPICO", "TIPO", "VALOR", "AUTOR", "EMAIL", "TS"]);
   sh.appendRow([
