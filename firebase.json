@@ -1,0 +1,25 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "apps-script/**",
+      "dev-mock/**",
+      ".github/**",
+      "AGENTS.md"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(md|js|css|html|png|jpg|jpeg|gif|webp|svg)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=3600"
+          }
+        ]
+      }
+    ]
+  }
+}
