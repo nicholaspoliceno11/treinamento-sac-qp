@@ -18,6 +18,7 @@
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
   var ACADEMIA_TOPIC = "videos";
+  var SESSION_VERSION = 1;
 
   var state = {
     session: null,        // { nome, email, perfil, acessoAcademia }
@@ -74,11 +75,16 @@
       var raw = localStorage.getItem("qp_session");
       state.session = raw ? JSON.parse(raw) : null;
     } catch (e) { state.session = null; }
+    if (state.session && state.session._v !== SESSION_VERSION) {
+      state.session = null;
+      try { localStorage.removeItem("qp_session"); } catch (e) {}
+    }
     state.accessResolved = false;
     if (state.session) delete state.session.acessoAcademia;
   }
   function saveSession(s) {
     state.session = s;
+    if (state.session) state.session._v = SESSION_VERSION;
     try { localStorage.setItem("qp_session", JSON.stringify(s)); } catch (e) {}
   }
   function clearSession() {
@@ -266,6 +272,7 @@
     var topic = currentTopic();
     var blocked = document.getElementById("qp-restricted");
     if (!canAccessTopic(topic)) {
+      section.classList.add("qp-academia-blocked");
       Array.from(section.children).forEach(function (el) {
         if (el.id !== "qp-restricted" && el.id !== "qp-topbar" && el.id !== "qp-injected") {
           el.style.display = "none";
@@ -285,6 +292,7 @@
       blocked.style.display = "";
       return true;
     }
+    section.classList.remove("qp-academia-blocked");
     if (blocked) blocked.style.display = "none";
     Array.from(section.children).forEach(function (el) {
       if (el.getAttribute("data-qp-hidden") === "1") {
