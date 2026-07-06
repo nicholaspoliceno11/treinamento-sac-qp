@@ -128,7 +128,7 @@
     ov.innerHTML =
       '<form class="qp-login-card" id="qp-login-form" autocomplete="on">' +
       '  <h2>Treinamento Quero Passagem</h2>' +
-      '  <p class="qp-sub">Entre com o e-mail e a senha cadastrados pela gestão.</p>' +
+      '  <p class="qp-sub">Entre em contato com a gestão para atualizar a senha.</p>' +
       '  <label for="qp-email">E-mail</label>' +
       '  <input id="qp-email" name="email" type="email" required placeholder="seu.email@empresa.com">' +
       '  <label for="qp-senha">Senha</label>' +
