@@ -1,6 +1,6 @@
 <div class="hero">
 
-# 🚀 Bem-vindo ao Treinamento Quero Passagem
+# 🚀 Bem-vindo ao Biblioteca Quero Passagem
 
 Sua jornada de excelência começa aqui.
 
@@ -74,12 +74,3 @@ Vídeos e treinamentos.
 > Qual o procedimento correto?
 
 ---
-
-# ✅ Minha Checklist
-
-- [ ] Concluir Onboarding
-- [ ] Dominar Atendimento
-- [ ] Estudar Financeiro
-- [ ] Aprender CMS
-- [ ] Conhecer ANTT
-- [ ] Certificação Final
