@@ -1,6 +1,6 @@
 <div class="hero">
 
-# 🚀 Bem-vindo ao Biblioteca Quero Passagem
+# 🚀 Bem-vindo a Biblioteca Quero Passagem
 
 Sua jornada de excelência começa aqui.
 
