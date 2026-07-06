@@ -32,7 +32,10 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
 |---|---|---|---|---|---|
 
 - **PERFIL**: use `Administrador` ou `Atendente`.
-- **ACESSO ACADEMIA**: use `SIM` para liberar o tópico **🎥 Academia** no site; `NÃO` (ou vazio) bloqueia. Administradores sempre têm acesso.
+- **ACESSO ACADEMIA** (controle do tópico 🎥 Academia) — duas formas válidas:
+  - **Opção A:** coluna `ACESSO ACADEMIA` na aba **Login Treinamento** (`SIM` / `NÃO`), ou
+  - **Opção B:** aba separada **`ACESSO ACADEMIA`** com colunas `NOME` + `ACESSO` (`Sim` / `Não`). O nome deve ser igual ao da aba de login.
+  - Administradores sempre têm acesso.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
 - **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
 

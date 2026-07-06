@@ -10,7 +10,8 @@
  * (a ORDEM não importa — as colunas são detectadas pelo nome):
  *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
  *   (a coluna "SENHA TEMPORARIA" é opcional)
- *   (a coluna "ACESSO ACADEMIA" controla o tópico 🎥 Academia — use SIM ou NÃO)
+ *   (a coluna "ACESSO ACADEMIA" na aba Login Treinamento — use SIM ou NÃO)
+ *   OU uma aba separada "ACESSO ACADEMIA" com colunas NOME + ACESSO (Sim/Não)
  *
  * As abas auxiliares (Progresso, Comentarios, Conteudo) são criadas
  * automaticamente na primeira execução.
@@ -18,6 +19,7 @@
 
 var SPREADSHEET_ID = "1TxJC6cboGQiQwu5faAqZZo-vXIpO_6uRI2e_DKIlRgA";
 var LOGIN_SHEET = "Login Treinamento"; // nome da aba com os usuários
+var ACESSO_ACADEMIA_SHEET = "ACESSO ACADEMIA"; // aba opcional (NOME + ACESSO)
 
 function getSS() {
   return SPREADSHEET_ID
@@ -108,11 +110,57 @@ function isSim(val) {
   return v === "SIM" || v === "S" || v === "YES" || v === "Y";
 }
 
+function academiaSheetCols(headers) {
+  var H = (headers || []).map(function (h) { return stripAccents(norm(h)).toUpperCase(); });
+  function find() {
+    for (var a = 0; a < arguments.length; a++) {
+      var idx = H.indexOf(arguments[a]);
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+  return {
+    nome: find("NOME COMPLETO", "NOME"),
+    email: find("E-MAIL", "EMAIL"),
+    acesso: find("ACESSO ACADEMIA", "ACESSO")
+  };
+}
+
+// Lê a aba separada "ACESSO ACADEMIA" (NOME + ACESSO). Retorna null se a aba não existir.
+function academiaAccessFromSheet(u) {
+  var sh = getSS().getSheetByName(ACESSO_ACADEMIA_SHEET);
+  if (!sh) return null;
+  var values = sh.getDataRange().getValues();
+  if (!values.length) return null;
+  var cols = academiaSheetCols(values[0]);
+  if (cols.acesso < 0) return null;
+
+  var userNome = stripAccents(cell(u, "nome")).toUpperCase();
+  var userEmail = cell(u, "email").toLowerCase();
+
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var match = false;
+    if (cols.email >= 0 && userEmail && norm(row[cols.email]).toLowerCase() === userEmail) {
+      match = true;
+    } else if (cols.nome >= 0) {
+      var rowNome = stripAccents(norm(row[cols.nome])).toUpperCase();
+      if (rowNome && rowNome === userNome) match = true;
+    }
+    if (match) return isSim(row[cols.acesso]);
+  }
+  return false; // não está na lista = sem acesso
+}
+
 function hasAcademiaAccess(u) {
   if (!u) return false;
   if (/admin/i.test(cell(u, "perfil"))) return true;
-  if (u.cols.acessoAcademia < 0) return false;
-  return isSim(u.data[u.cols.acessoAcademia]);
+  // Opção A: coluna na aba Login Treinamento
+  if (u.cols.acessoAcademia >= 0) return isSim(u.data[u.cols.acessoAcademia]);
+  // Opção B: aba separada "ACESSO ACADEMIA"
+  var fromSheet = academiaAccessFromSheet(u);
+  if (fromSheet !== null) return fromSheet;
+  return false;
 }
 
 function loginData() {
