@@ -360,6 +360,31 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
 .qp-desafio-opcoes input{ flex:1; font-weight:400; padding:9px 11px; border:1px solid #d7dbe0; border-radius:8px; }
 .qp-check{ display:inline-flex; align-items:center; gap:6px; font-weight:500; margin-left:12px; }
 
+body.qp-portal-locked{ overflow:hidden; }
+
+.qp-sidebar-auth{
+  margin:20px 16px 24px;
+  padding:14px;
+  border-top:1px solid #e8e8ed;
+  background:#f5f7fa;
+  border-radius:12px;
+}
+.qp-sidebar-user{
+  font-weight:600;
+  font-size:.85rem;
+  color:var(--qp-blue);
+  margin-bottom:4px;
+  word-break:break-word;
+}
+.qp-sidebar-perfil{
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:#5a6472;
+  margin-bottom:10px;
+}
+.qp-sidebar-logout{ width:100%; }
+
 .qp-api-warning{
   background:#fff8e1;
   border:1px solid #ffe08a;

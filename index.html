@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-<link rel="stylesheet" href="assets/app.css?v=8">
+<link rel="stylesheet" href="assets/app.css?v=9">
 
 <style>
 
@@ -294,7 +294,13 @@ Carregando Treinamento Quero Passagem...
   <img src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
 </div>
 
-<script src="assets/config.js?v=8"></script>
+<script src="assets/config.js?v=9"></script>
+<script>
+window.QP_CONFIG = window.QP_CONFIG || {};
+if (!window.QP_CONFIG.API_URL) {
+  window.QP_CONFIG.API_URL = "https://script.google.com/macros/s/AKfycbxt7utGL-FKQTrdIlwLs7Es0EV4iGHud3jZI1gHFv2XdQ4HX3a3oS9bttZlm_pKkE2JQw/exec";
+}
+</script>
 
 <script>
 window.$docsify = {
@@ -312,7 +318,7 @@ window.$docsify = {
 }
 </script>
 
-<script src="assets/app.js?v=8"></script>
+<script src="assets/app.js?v=9"></script>
 
 <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
 <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>

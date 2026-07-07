@@ -18,7 +18,12 @@
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
   var ACADEMIA_TOPIC = "videos";
-  var SESSION_VERSION = 2;
+  var SESSION_VERSION = 3;
+  var SESSION_KEY = "qp_session";
+
+  function sessionStore() {
+    try { return window.sessionStorage; } catch (e) { return null; }
+  }
 
   var state = {
     session: null,        // { nome, email, perfil, acessoAcademia }
@@ -69,30 +74,38 @@
     }).then(function (r) { return r.json(); });
   }
 
-  // -------------------------------------------------- sessão
+  // -------------------------------------------------- sessão (sessionStorage — novo acesso pede login)
   function loadSession() {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
     try {
-      var raw = localStorage.getItem("qp_session");
+      var store = sessionStore();
+      var raw = store ? store.getItem(SESSION_KEY) : null;
       state.session = raw ? JSON.parse(raw) : null;
     } catch (e) { state.session = null; }
     if (state.session && state.session._v !== SESSION_VERSION) {
       state.session = null;
-      try { localStorage.removeItem("qp_session"); } catch (e) {}
+      try { var s = sessionStore(); if (s) s.removeItem(SESSION_KEY); } catch (e2) {}
     }
     state.accessResolved = false;
     if (state.session) delete state.session.acessoAcademia;
   }
-  function saveSession(s) {
-    state.session = s;
+  function saveSession(sess) {
+    state.session = sess;
     if (state.session) state.session._v = SESSION_VERSION;
-    try { localStorage.setItem("qp_session", JSON.stringify(s)); } catch (e) {}
+    try {
+      var store = sessionStore();
+      if (store) store.setItem(SESSION_KEY, JSON.stringify(state.session));
+    } catch (e) {}
   }
   function clearSession() {
     state.session = null;
     state.concluidos = [];
     state.percent = 0;
     state.accessResolved = false;
-    try { localStorage.removeItem("qp_session"); } catch (e) {}
+    try {
+      var store = sessionStore();
+      if (store) store.removeItem(SESSION_KEY);
+    } catch (e) {}
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
   function parseAcademiaAccess(val) {
@@ -152,6 +165,7 @@
   function showOverlay(show) {
     var ov = document.getElementById("qp-login-overlay");
     if (ov) ov.classList.toggle("qp-show", !!show);
+    document.body.classList.toggle("qp-portal-locked", !!show);
   }
   function loginMsg(text, type) {
     var el = document.getElementById("qp-login-msg");
@@ -220,7 +234,10 @@
           if (res.perfil) state.session.perfil = res.perfil;
           state.session.acessoAcademia = parseAcademiaAccess(res.acessoAcademia);
           state.accessResolved = true;
-          try { localStorage.setItem("qp_session", JSON.stringify(state.session)); } catch (e) {}
+          try {
+            var store = sessionStore();
+            if (store) store.setItem(SESSION_KEY, JSON.stringify(state.session));
+          } catch (e) {}
           recompute();
           return true;
         }
@@ -286,6 +303,27 @@
     });
   }
 
+  function ensureSidebarAuth() {
+    if (!apiConfigured()) return;
+    var sidebar = document.querySelector("aside.sidebar") || document.querySelector(".sidebar");
+    if (!sidebar) return;
+    var box = document.getElementById("qp-sidebar-auth");
+    if (!state.session) {
+      if (box) box.remove();
+      return;
+    }
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "qp-sidebar-auth";
+      sidebar.appendChild(box);
+    }
+    box.innerHTML =
+      '<div class="qp-sidebar-user">' + esc(state.session.nome || state.session.email) + "</div>" +
+      '<div class="qp-sidebar-perfil">' + esc(state.session.perfil || "") + "</div>" +
+      '<button type="button" class="qp-btn qp-btn-ghost qp-sidebar-logout" id="qp-sidebar-logout">Sair</button>';
+    box.querySelector("#qp-sidebar-logout").addEventListener("click", logout);
+  }
+
   function enforceAccess(section) {
     if (!apiConfigured() || !state.session) return false;
     var topic = currentTopic();
@@ -325,6 +363,7 @@
   // -------------------------------------------------- render por página
   function refreshUI() {
     applySidebarRestrictions();
+    ensureSidebarAuth();
     refreshProgressUI();
     ensureTopbar();
     renderPage();
@@ -711,10 +750,11 @@
 
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
-    hook.doneEach(function () { ensureTopbar(); renderPage(); applySidebarRestrictions(); });
+    hook.doneEach(function () { ensureTopbar(); ensureSidebarAuth(); renderPage(); applySidebarRestrictions(); });
     hook.ready(function () {
       window.addEventListener("hashchange", function () {
         applySidebarRestrictions();
+        ensureSidebarAuth();
         renderPage();
       });
     });
