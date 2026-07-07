@@ -522,7 +522,7 @@
         // Sempre embutido: nunca renderiza link externo, e o overlay (.qp-video-guard)
         // + oncontextmenu bloqueiam clicar no título/logo p/ abrir no YouTube.
         if (emb) body = '<div class="qp-video" oncontextmenu="return false">' +
-          '<iframe src="' + esc(emb) + '" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>' +
+          '<iframe src="' + esc(emb) + '" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>' +
           '<span class="qp-video-guard" aria-hidden="true"></span>' +
           '</div>';
         else body = '<p class="qp-empty">Vídeo indisponível para exibição segura no portal (use um link do YouTube ou Vimeo).</p>';
