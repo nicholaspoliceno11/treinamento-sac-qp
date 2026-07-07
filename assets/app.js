@@ -313,7 +313,12 @@
   }
 
   // -------------------------------------------------- render por página
-  function refreshUI() { applySidebarRestrictions(); refreshProgressUI(); renderPage(); }
+  function refreshUI() {
+    applySidebarRestrictions();
+    refreshProgressUI();
+    ensureTopbar();
+    renderPage();
+  }
 
   function renderPage() {
     // Portal só age quando a API está configurada; caso contrário o site
@@ -322,8 +327,7 @@
     var section = document.querySelector(".markdown-section");
     if (!section) return;
 
-    // topbar sempre no topo do conteúdo quando logado
-    ensureTopbar(section);
+    ensureTopbar();
 
     // remove injeções anteriores
     var old = section.querySelector("#qp-injected");
@@ -365,9 +369,12 @@
     }
   }
 
-  function ensureTopbar(section) {
+  function ensureTopbar() {
     var existing = document.getElementById("qp-topbar");
-    if (!state.session) { if (existing) existing.classList.remove("qp-show"); return; }
+    if (!state.session) {
+      if (existing) existing.classList.remove("qp-show");
+      return;
+    }
     if (!existing) {
       existing = document.createElement("div");
       existing.id = "qp-topbar";
@@ -379,13 +386,19 @@
         '<button class="qp-btn qp-btn-ghost" id="qp-logout">Sair</button>';
       existing.querySelector("#qp-logout").addEventListener("click", logout);
     }
-    // sempre garantir que fica no topo do conteúdo atual
-    if (section.firstChild !== existing) section.insertBefore(existing, section.firstChild);
+    // Fora do .markdown-section — o Docsify recria o conteúdo e apagava o topbar
+    var mount = document.querySelector("main .content") || document.querySelector(".content");
+    var article = mount && mount.querySelector(".markdown-section");
+    if (mount) {
+      if (existing.parentElement !== mount) mount.insertBefore(existing, article || mount.firstChild);
+      else if (article && existing.nextElementSibling !== article) mount.insertBefore(existing, article);
+    }
     existing.classList.add("qp-show");
     existing.querySelector(".qp-user").textContent = "Olá, " + (state.session.nome || state.session.email);
     var badge = existing.querySelector(".qp-badge");
     badge.textContent = state.session.perfil || "";
     badge.classList.toggle("qp-admin", isAdmin());
+    refreshProgressUI();
   }
 
   // -------- concluído
@@ -688,7 +701,7 @@
 
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
-    hook.doneEach(function () { renderPage(); applySidebarRestrictions(); });
+    hook.doneEach(function () { ensureTopbar(); renderPage(); applySidebarRestrictions(); });
     hook.ready(function () {
       window.addEventListener("hashchange", function () {
         applySidebarRestrictions();

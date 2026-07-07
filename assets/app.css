@@ -174,7 +174,10 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
   border-left:5px solid var(--qp-yellow);
   border-radius:14px;
   padding:12px 18px;
-  margin-bottom:22px;
+  margin:0 0 22px;
+  position:sticky;
+  top:0;
+  z-index:1000;
 }
 #qp-topbar.qp-show{ display:flex; }
 #qp-topbar .qp-user{ font-weight:600; color:var(--qp-blue); }
