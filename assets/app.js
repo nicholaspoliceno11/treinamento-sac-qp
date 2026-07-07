@@ -42,11 +42,53 @@
   function isHttpUrl(u) { return /^https?:\/\//i.test(String(u || "").trim()); }
 
   function ytEmbed(url) {
-    var m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/);
-    if (m) return "https://www.youtube.com/embed/" + m[1];
+    // Domínio nocookie + rel=0/modestbranding: reduz marca do YouTube e mantém
+    // a reprodução dentro do portal (sem sugerir "assistir no YouTube").
+    var m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/);
+    if (m) return "https://www.youtube-nocookie.com/embed/" + m[1] + "?rel=0&modestbranding=1&playsinline=1";
     var v = String(url).match(/vimeo\.com\/(\d+)/);
     if (v) return "https://player.vimeo.com/video/" + v[1];
     return null;
+  }
+
+  function isImageSrc(v) {
+    v = String(v || "").trim();
+    return isHttpUrl(v) || /^data:image\//i.test(v);
+  }
+
+  // Comprime/redimensiona a imagem no navegador e devolve um data URI JPEG
+  // pequeno o suficiente para caber numa célula da planilha (limite ~50k chars).
+  var IMG_MAX_CHARS = 45000;
+  function compressImageFile(file, cb) {
+    if (!file) { cb(null, "Selecione uma imagem."); return; }
+    if (!/^image\//.test(file.type)) { cb(null, "O arquivo precisa ser uma imagem."); return; }
+    var reader = new FileReader();
+    reader.onerror = function () { cb(null, "Não foi possível ler a imagem."); };
+    reader.onload = function () {
+      var img = new Image();
+      img.onerror = function () { cb(null, "Imagem inválida ou corrompida."); };
+      img.onload = function () {
+        var dims = [1200, 1000, 800, 640, 480];
+        var quals = [0.8, 0.7, 0.6, 0.5, 0.4];
+        for (var d = 0; d < dims.length; d++) {
+          var scale = Math.min(1, dims[d] / Math.max(img.width, img.height));
+          var w = Math.max(1, Math.round(img.width * scale));
+          var h = Math.max(1, Math.round(img.height * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); // fundo p/ PNG transparente
+          ctx.drawImage(img, 0, 0, w, h);
+          for (var q = 0; q < quals.length; q++) {
+            var dataUrl = canvas.toDataURL("image/jpeg", quals[q]);
+            if (dataUrl.length <= IMG_MAX_CHARS) { cb(dataUrl, null); return; }
+          }
+        }
+        cb(null, "Imagem muito grande mesmo após compressão. Use uma imagem menor.");
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   function fmtTime(ts) {
@@ -432,16 +474,31 @@
         '    <select id="qp-content-tipo">' +
         '      <option value="texto">Texto</option>' +
         '      <option value="video">Vídeo (link YouTube/Vimeo)</option>' +
-        '      <option value="imagem">Imagem (URL)</option>' +
+        '      <option value="imagem">Imagem (anexar arquivo)</option>' +
         '    </select>' +
         '  </div>' +
-        '  <textarea id="qp-content-valor" placeholder="Digite o texto, ou cole o link do vídeo/imagem"></textarea>' +
-        '  <p class="qp-hint">Somente administradores podem adicionar material. Vídeos e imagens são adicionados por link/URL.</p>' +
+        '  <textarea id="qp-content-valor" placeholder="Digite o texto, ou cole o link do vídeo"></textarea>' +
+        '  <input type="file" id="qp-content-file" accept="image/*" style="display:none">' +
+        '  <p class="qp-hint" id="qp-content-hint">Somente administradores podem adicionar material.</p>' +
         '  <button class="qp-btn qp-btn-add" id="qp-content-add">Adicionar material</button>' +
         '</div>';
     }
     sec.innerHTML = html;
     if (isAdmin()) {
+      var sel = sec.querySelector("#qp-content-tipo");
+      var ta = sec.querySelector("#qp-content-valor");
+      var fileInput = sec.querySelector("#qp-content-file");
+      var hint = sec.querySelector("#qp-content-hint");
+      function syncTipo() {
+        var isImg = sel.value === "imagem";
+        fileInput.style.display = isImg ? "" : "none";
+        ta.style.display = isImg ? "none" : "";
+        if (sel.value === "texto") hint.textContent = "Digite o texto do material complementar.";
+        else if (sel.value === "video") hint.textContent = "Cole o link do YouTube/Vimeo — o vídeo toca dentro do portal, sem abrir o YouTube.";
+        else hint.textContent = "Anexe uma imagem (JPG/PNG). Ela é redimensionada e otimizada automaticamente.";
+      }
+      sel.addEventListener("change", syncTipo);
+      syncTipo();
       sec.querySelector("#qp-content-add").addEventListener("click", function () { addContent(topic); });
     }
     return sec;
@@ -459,11 +516,16 @@
     list.innerHTML = blocks.map(function (b) {
       var body = "";
       if (b.tipo === "texto") body = "<div>" + esc(b.valor).replace(/\n/g, "<br>") + "</div>";
-      else if (b.tipo === "imagem" && isHttpUrl(b.valor)) body = '<img src="' + esc(b.valor) + '" alt="material">';
+      else if (b.tipo === "imagem" && isImageSrc(b.valor)) body = '<img src="' + esc(b.valor) + '" alt="material">';
       else if (b.tipo === "video") {
         var emb = ytEmbed(b.valor);
-        if (emb) body = '<div class="qp-video"><iframe src="' + esc(emb) + '" allowfullscreen loading="lazy"></iframe></div>';
-        else if (isHttpUrl(b.valor)) body = '<a href="' + esc(b.valor) + '" target="_blank" rel="noopener">Assistir vídeo</a>';
+        // Sempre embutido: nunca renderiza link externo, e o overlay (.qp-video-guard)
+        // + oncontextmenu bloqueiam clicar no título/logo p/ abrir no YouTube.
+        if (emb) body = '<div class="qp-video" oncontextmenu="return false">' +
+          '<iframe src="' + esc(emb) + '" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>' +
+          '<span class="qp-video-guard" aria-hidden="true"></span>' +
+          '</div>';
+        else body = '<p class="qp-empty">Vídeo indisponível para exibição segura no portal (use um link do YouTube ou Vimeo).</p>';
       }
       return '<div class="qp-block">' + body +
         '<div class="qp-meta">Adicionado por ' + esc(b.autor || "admin") + " • " + esc(fmtTime(b.ts)) + "</div></div>";
@@ -472,22 +534,43 @@
 
   function addContent(topic) {
     var tipo = document.getElementById("qp-content-tipo").value;
-    var valor = (document.getElementById("qp-content-valor").value || "").trim();
-    if (!valor) return;
-    if ((tipo === "imagem" || tipo === "video") && !isHttpUrl(valor)) {
-      alert("Para imagem/vídeo, cole uma URL começando com http(s)://");
+    var btn = document.getElementById("qp-content-add");
+
+    function send(valor) {
+      btn.disabled = true;
+      api({ action: "addContent", email: state.session.email, topic: topic, tipo: tipo, valor: valor })
+        .then(function (res) {
+          if (res && res.ok) {
+            var ta = document.getElementById("qp-content-valor"); if (ta) ta.value = "";
+            var f = document.getElementById("qp-content-file"); if (f) f.value = "";
+            loadContent(topic);
+          }
+          else if (res && res.error === "perfil") alert("Apenas administradores podem adicionar material.");
+          else alert((res && res.message) || "Não foi possível adicionar.");
+        })
+        .catch(function () { alert("Falha de conexão."); })
+        .then(function () { btn.disabled = false; btn.textContent = "Adicionar material"; });
+    }
+
+    if (tipo === "imagem") {
+      var fileInput = document.getElementById("qp-content-file");
+      var file = fileInput && fileInput.files && fileInput.files[0];
+      if (!file) { alert("Selecione uma imagem para anexar."); return; }
+      btn.disabled = true; btn.textContent = "Processando imagem…";
+      compressImageFile(file, function (dataUrl, err) {
+        if (err) { btn.disabled = false; btn.textContent = "Adicionar material"; alert(err); return; }
+        send(dataUrl);
+      });
       return;
     }
-    var btn = document.getElementById("qp-content-add");
-    btn.disabled = true;
-    api({ action: "addContent", email: state.session.email, topic: topic, tipo: tipo, valor: valor })
-      .then(function (res) {
-        if (res && res.ok) { document.getElementById("qp-content-valor").value = ""; loadContent(topic); }
-        else if (res && res.error === "perfil") alert("Apenas administradores podem adicionar material.");
-        else alert((res && res.message) || "Não foi possível adicionar.");
-      })
-      .catch(function () { alert("Falha de conexão."); })
-      .then(function () { btn.disabled = false; });
+
+    var valor = (document.getElementById("qp-content-valor").value || "").trim();
+    if (!valor) return;
+    if (tipo === "video" && !isHttpUrl(valor)) {
+      alert("Para vídeo, cole uma URL começando com http(s)://");
+      return;
+    }
+    send(valor);
   }
 
   // -------- comentários (todos)
