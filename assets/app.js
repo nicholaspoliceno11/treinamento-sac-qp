@@ -641,7 +641,7 @@
     });
     html += "</div>";
     html += '<button type="button" class="qp-btn qp-btn-primary qp-quiz-btn" data-desafio-submit data-qid="' +
-      esc(q.id) + '">Enviar resposta</button>";
+      esc(q.id) + '">Enviar resposta</button>';
     return html + "</div>";
   }
 
