@@ -47,6 +47,9 @@ function doPost(e) {
       case "getDuvidas":  return json({ ok: true, duvidas: listDuvidas() });
       case "addDuvida":   return json(handleAddDuvida(req));
       case "answerDuvida":return json(handleAnswerDuvida(req));
+      case "getDesafio":    return json(handleGetDesafio(req));
+      case "addDesafioPergunta": return json(handleAddDesafioPergunta(req));
+      case "submitDesafioResposta": return json(handleSubmitDesafioResposta(req));
       case "debug":       return json(handleDebug(req));
       default:            return json({ ok: false, message: "Ação desconhecida" });
     }
@@ -405,6 +408,142 @@ function handleAnswerDuvida(req) {
     }
   }
   return { ok: false, message: "Dúvida não encontrada" };
+}
+
+/* ---------------- Desafio do Dia (quiz) ---------------- */
+var DESAFIO_PERGUNTAS_HEADERS = ["ID", "PERGUNTA", "OPCAO_A", "OPCAO_B", "OPCAO_C", "OPCAO_D", "CORRETA", "ATIVO", "CRIADO_POR", "CRIADO_EM"];
+var DESAFIO_RESPOSTAS_HEADERS = ["ID", "QUESTAO_ID", "EMAIL", "NOME", "ESCOLHA", "ACERTOU", "TS"];
+
+function desafioPerguntasSheet() { return ensureSheet("DesafioPerguntas", DESAFIO_PERGUNTAS_HEADERS); }
+function desafioRespostasSheet() { return ensureSheet("DesafioRespostas", DESAFIO_RESPOSTAS_HEADERS); }
+
+function parseDesafioPergunta(row) {
+  return {
+    id: norm(row[0]),
+    pergunta: norm(row[1]),
+    opcoes: {
+      A: norm(row[2]),
+      B: norm(row[3]),
+      C: norm(row[4]),
+      D: norm(row[5])
+    },
+    correta: norm(row[6]),
+    ativo: isSim(row[7]),
+    criadoPor: norm(row[8]),
+    criadoEm: norm(row[9])
+  };
+}
+
+function listDesafioPerguntas(admin) {
+  var data = desafioPerguntasSheet().getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < data.length; i++) {
+    var q = parseDesafioPergunta(data[i]);
+    if (!q.id || !q.pergunta) continue;
+    if (!admin && !q.ativo) continue;
+    var item = {
+      id: q.id,
+      pergunta: q.pergunta,
+      opcoes: q.opcoes,
+      ativo: q.ativo,
+      criadoPor: q.criadoPor,
+      criadoEm: q.criadoEm
+    };
+    if (admin) item.correta = q.correta;
+    out.push(item);
+  }
+  return out;
+}
+
+function findDesafioPergunta(id) {
+  var data = desafioPerguntasSheet().getDataRange().getValues();
+  var target = norm(id);
+  for (var i = 1; i < data.length; i++) {
+    var q = parseDesafioPergunta(data[i]);
+    if (q.id === target) return q;
+  }
+  return null;
+}
+
+function listDesafioRespostasPorEmail(email) {
+  var data = desafioRespostasSheet().getDataRange().getValues();
+  var t = norm(email).toLowerCase();
+  var out = [];
+  for (var i = 1; i < data.length; i++) {
+    if (norm(data[i][2]).toLowerCase() !== t) continue;
+    out.push({
+      id: norm(data[i][0]),
+      questaoId: norm(data[i][1]),
+      escolha: norm(data[i][4]),
+      acertou: isSim(data[i][5]),
+      ts: norm(data[i][6])
+    });
+  }
+  return out;
+}
+
+function latestDesafioResposta(email, questaoId) {
+  var all = listDesafioRespostasPorEmail(email);
+  var qid = norm(questaoId);
+  var latest = null;
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].questaoId !== qid) continue;
+    if (!latest || String(all[i].ts) > String(latest.ts)) latest = all[i];
+  }
+  return latest;
+}
+
+function handleGetDesafio(req) {
+  var u = findUser(req.email);
+  if (!u) return { ok: false, error: "usuario" };
+  var admin = /admin/i.test(cell(u, "perfil"));
+  return {
+    ok: true,
+    perguntas: listDesafioPerguntas(admin),
+    respostas: listDesafioRespostasPorEmail(req.email)
+  };
+}
+
+function handleAddDesafioPergunta(req) {
+  var u = findUser(req.email);
+  if (!u) return { ok: false, error: "usuario" };
+  if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
+  var pergunta = norm(req.pergunta);
+  if (!pergunta) return { ok: false, message: "Pergunta vazia" };
+  var op = req.opcoes || {};
+  var a = norm(op.A), b = norm(op.B), c = norm(op.C), d = norm(op.D);
+  if (!a || !b) return { ok: false, message: "Informe ao menos as opções A e B" };
+  var correta = stripAccents(norm(req.correta)).toUpperCase();
+  if ("ABCD".indexOf(correta) < 0) return { ok: false, message: "Resposta correta inválida (use A, B, C ou D)" };
+  if (correta === "C" && !c) return { ok: false, message: "Opção C está vazia" };
+  if (correta === "D" && !d) return { ok: false, message: "Opção D está vazia" };
+  var ativo = req.ativo !== false;
+  var id = "Q" + new Date().getTime();
+  desafioPerguntasSheet().appendRow([
+    id, pergunta, a, b, c, d, correta, ativo ? "SIM" : "NAO",
+    cell(u, "nome"), new Date().toISOString()
+  ]);
+  return { ok: true, id: id };
+}
+
+function handleSubmitDesafioResposta(req) {
+  var u = findUser(req.email);
+  if (!u) return { ok: false, error: "usuario" };
+  var questaoId = norm(req.questaoId);
+  var escolha = stripAccents(norm(req.escolha)).toUpperCase();
+  if (!questaoId || "ABCD".indexOf(escolha) < 0) return { ok: false, message: "Dados inválidos" };
+  var q = findDesafioPergunta(questaoId);
+  if (!q || !q.ativo) return { ok: false, message: "Pergunta não encontrada ou inativa" };
+  var latest = latestDesafioResposta(req.email, questaoId);
+  if (latest && latest.acertou) return { ok: true, acertou: true, jaAcertou: true };
+  var correta = stripAccents(norm(q.correta)).toUpperCase();
+  var acertou = escolha === correta;
+  var id = "R" + new Date().getTime();
+  desafioRespostasSheet().appendRow([
+    id, questaoId, cell(u, "email"), cell(u, "nome"), escolha,
+    acertou ? "SIM" : "NAO", new Date().toISOString()
+  ]);
+  return { ok: true, acertou: acertou };
 }
 
 function ensureSheet(name, headers) {

@@ -346,6 +346,9 @@
     // Bloco "concluído" (só nos tópicos que contam progresso)
     if (isTopic(topic)) wrap.appendChild(buildComplete(topic));
 
+    // Desafio do Dia (quiz)
+    if (topic === "desafio") wrap.appendChild(buildDesafioSection());
+
     // Conteúdo adicional (admin adiciona; todos veem)
     wrap.appendChild(buildContentSection(topic));
 
@@ -355,7 +358,11 @@
     section.appendChild(wrap);
     refreshProgressUI();
 
-    if (apiConfigured()) { loadContent(topic); loadComments(topic); }
+    if (apiConfigured()) {
+      loadContent(topic);
+      loadComments(topic);
+      if (topic === "desafio") loadDesafio();
+    }
   }
 
   function ensureTopbar(section) {
@@ -510,6 +517,171 @@
     btn.disabled = true;
     api({ action: "addComment", email: state.session.email, topic: topic, texto: texto })
       .then(function (res) { if (res && res.ok) { ta.value = ""; loadComments(topic); } else alert((res && res.message) || "Não foi possível comentar."); })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  // -------- Desafio do Dia (quiz)
+  function buildDesafioSection() {
+    var sec = document.createElement("div");
+    sec.className = "qp-section qp-desafio";
+    var html =
+      '<h3 class="qp-section-title">🎯 Desafio do Dia</h3>' +
+      '<div id="qp-desafio-root"><p class="qp-empty">Carregando perguntas…</p></div>';
+    if (isAdmin()) {
+      html +=
+        '<div class="qp-form qp-desafio-admin">' +
+        '  <h4>Nova pergunta (múltipla escolha)</h4>' +
+        '  <textarea id="qp-desafio-pergunta" placeholder="Digite a pergunta do desafio…" rows="3"></textarea>' +
+        '  <div class="qp-desafio-opcoes">' +
+        '    <label>A) <input id="qp-desafio-a" type="text" placeholder="Opção A"></label>' +
+        '    <label>B) <input id="qp-desafio-b" type="text" placeholder="Opção B"></label>' +
+        '    <label>C) <input id="qp-desafio-c" type="text" placeholder="Opção C (opcional)"></label>' +
+        '    <label>D) <input id="qp-desafio-d" type="text" placeholder="Opção D (opcional)"></label>' +
+        '  </div>' +
+        '  <div class="qp-row">' +
+        '    <label for="qp-desafio-correta">Resposta correta</label>' +
+        '    <select id="qp-desafio-correta"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>' +
+        '    <label class="qp-check"><input id="qp-desafio-ativo" type="checkbox" checked> Ativa (visível para atendentes)</label>' +
+        '  </div>' +
+        '  <button class="qp-btn qp-btn-add" id="qp-desafio-add">Publicar pergunta</button>' +
+        '</div>';
+    }
+    sec.innerHTML = html;
+    return sec;
+  }
+
+  function latestDesafioMap(respostas) {
+    var map = {};
+    (respostas || []).forEach(function (r) {
+      if (!map[r.questaoId] || String(r.ts) > String(map[r.questaoId].ts)) map[r.questaoId] = r;
+    });
+    return map;
+  }
+
+  function loadDesafio() {
+    api({ action: "getDesafio", email: state.session.email })
+      .then(function (res) {
+        if (res && res.ok) renderDesafio(res.perguntas || [], res.respostas || []);
+        else renderDesafio([], []);
+      })
+      .catch(function () { renderDesafio([], []); });
+    var btn = document.getElementById("qp-desafio-add");
+    if (btn && !btn._qpBound) {
+      btn._qpBound = true;
+      btn.addEventListener("click", addDesafioPergunta);
+    }
+  }
+
+  function renderDesafio(perguntas, respostas) {
+    var root = document.getElementById("qp-desafio-root");
+    if (!root) return;
+    var latest = latestDesafioMap(respostas);
+    var visiveis = isAdmin() ? perguntas : perguntas.filter(function (q) { return q.ativo; });
+
+    if (!visiveis.length) {
+      root.innerHTML = '<p class="qp-empty">' +
+        (isAdmin() ? "Nenhuma pergunta cadastrada. Use o formulário abaixo para criar." : "Nenhum desafio disponível no momento. Volte em breve!") +
+        "</p>";
+      return;
+    }
+
+    root.innerHTML = visiveis.map(function (q) {
+      return renderDesafioPergunta(q, latest[q.id]);
+    }).join("");
+
+    root.querySelectorAll("[data-desafio-submit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        submitDesafioResposta(btn.getAttribute("data-qid"), btn.closest(".qp-quiz"));
+      });
+    });
+  }
+
+  function renderDesafioPergunta(q, ultima) {
+    var letras = ["A", "B", "C", "D"];
+    var html = '<div class="qp-quiz" data-qid="' + esc(q.id) + '">';
+    html += '<p class="qp-quiz-q">' + esc(q.pergunta) + "</p>";
+
+    if (isAdmin()) {
+      html += '<p class="qp-hint">Correta: <strong>' + esc(q.correta || "?") + "</strong>" +
+        (q.ativo ? "" : " • <em>Inativa</em>") + "</p>";
+    }
+
+    if (ultima && ultima.acertou) {
+      html += '<div class="qp-quiz-result qp-quiz-ok">✅ Parabéns! Você acertou.</div>';
+      return html + "</div>";
+    }
+
+    if (ultima && !ultima.acertou) {
+      html += '<div class="qp-quiz-result qp-quiz-err">❌ Resposta incorreta. Você escolheu <strong>' +
+        esc(ultima.escolha) + "</strong>. Tente novamente!</div>";
+    }
+
+    html += '<div class="qp-quiz-opcoes">';
+    letras.forEach(function (L) {
+      var txt = (q.opcoes && q.opcoes[L]) || "";
+      if (!txt) return;
+      html += '<label class="qp-quiz-opt"><input type="radio" name="desafio-' + esc(q.id) +
+        '" value="' + L + '"><span class="qp-quiz-letter">' + L + ")</span> " + esc(txt) + "</label>";
+    });
+    html += "</div>";
+    html += '<button type="button" class="qp-btn qp-btn-primary qp-quiz-btn" data-desafio-submit data-qid="' +
+      esc(q.id) + '">Enviar resposta</button>";
+    return html + "</div>";
+  }
+
+  function submitDesafioResposta(questaoId, box) {
+    if (!box) return;
+    var picked = box.querySelector('input[name="desafio-' + questaoId + '"]:checked');
+    if (!picked) { alert("Selecione uma opção antes de enviar."); return; }
+    var btn = box.querySelector(".qp-quiz-btn");
+    if (btn) btn.disabled = true;
+    api({
+      action: "submitDesafioResposta",
+      email: state.session.email,
+      questaoId: questaoId,
+      escolha: picked.value
+    })
+      .then(function (res) {
+        if (res && res.ok) loadDesafio();
+        else alert((res && res.message) || "Não foi possível enviar.");
+      })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { if (btn) btn.disabled = false; });
+  }
+
+  function addDesafioPergunta() {
+    var pergunta = (document.getElementById("qp-desafio-pergunta").value || "").trim();
+    var opcoes = {
+      A: (document.getElementById("qp-desafio-a").value || "").trim(),
+      B: (document.getElementById("qp-desafio-b").value || "").trim(),
+      C: (document.getElementById("qp-desafio-c").value || "").trim(),
+      D: (document.getElementById("qp-desafio-d").value || "").trim()
+    };
+    var correta = document.getElementById("qp-desafio-correta").value;
+    var ativo = document.getElementById("qp-desafio-ativo").checked;
+    if (!pergunta) { alert("Digite a pergunta."); return; }
+    var btn = document.getElementById("qp-desafio-add");
+    btn.disabled = true;
+    api({
+      action: "addDesafioPergunta",
+      email: state.session.email,
+      pergunta: pergunta,
+      opcoes: opcoes,
+      correta: correta,
+      ativo: ativo
+    })
+      .then(function (res) {
+        if (res && res.ok) {
+          document.getElementById("qp-desafio-pergunta").value = "";
+          document.getElementById("qp-desafio-a").value = "";
+          document.getElementById("qp-desafio-b").value = "";
+          document.getElementById("qp-desafio-c").value = "";
+          document.getElementById("qp-desafio-d").value = "";
+          loadDesafio();
+        } else if (res && res.error === "perfil") alert("Apenas administradores podem criar perguntas.");
+        else alert((res && res.message) || "Não foi possível publicar.");
+      })
       .catch(function () { alert("Falha de conexão."); })
       .then(function () { btn.disabled = false; });
   }

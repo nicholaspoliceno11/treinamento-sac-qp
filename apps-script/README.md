@@ -54,3 +54,9 @@ As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamen
 | `addComment` | email, topic, texto | `{ok}` |
 | `getContent` | topic | `{ok, blocks:[...]}` |
 | `addContent` | email, topic, tipo, valor | `{ok}` ou `{ok:false, error:"perfil"}` (só admin) |
+| `getDesafio` | email | `{ok, perguntas:[...], respostas:[...]}` — respostas só do próprio usuário |
+| `addDesafioPergunta` | email, pergunta, opcoes `{A,B,C,D}`, correta, ativo | `{ok, id}` (só admin) |
+| `submitDesafioResposta` | email, questaoId, escolha (`A`–`D`) | `{ok, acertou}` — pode refazer se errou |
+
+Abas **DesafioPerguntas** e **DesafioRespostas** são criadas automaticamente.
+Cada atendente só recebe suas próprias respostas em `getDesafio`.

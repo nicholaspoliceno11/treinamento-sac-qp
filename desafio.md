@@ -1,15 +1,10 @@
-# 🏆 Desafio do Dia
+# 🎯 Desafio do Dia
 
-## Caso Prático
+Teste seus conhecimentos com perguntas de múltipla escolha criadas pela gestão.
 
-Cliente deseja cancelar uma passagem para amanhã.
-
-### Pergunta
-
-Qual o prazo limite para cancelamento?
+- Escolha a alternativa que você considera correta e envie.
+- Você verá na hora se **acertou** ou **errou**.
+- Se errou, pode **tentar de novo** até acertar.
+- Somente **você** vê o seu resultado — os colegas não enxergam suas respostas.
 
 ---
-
-### Resposta
-
-Consulte a página Financeiro > Prazos e Reembolsos.

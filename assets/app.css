@@ -312,6 +312,51 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
   display:none!important;
 }
 
+/* desafio do dia (quiz) */
+.qp-quiz{
+  border:1px solid #e8e8ed;
+  border-radius:14px;
+  padding:18px 20px;
+  margin:16px 0;
+  background:#fff;
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+}
+.qp-quiz-q{
+  font-size:1.05rem;
+  font-weight:600;
+  color:var(--qp-blue);
+  margin:0 0 14px;
+}
+.qp-quiz-opcoes{ display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.qp-quiz-opt{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:12px 14px;
+  border:1px solid #e0e4ea;
+  border-radius:10px;
+  cursor:pointer;
+  transition:border-color .2s, background .2s;
+}
+.qp-quiz-opt:hover{ border-color:var(--qp-mila-blue); background:#f5f9ff; }
+.qp-quiz-opt input{ margin-top:3px; accent-color:var(--qp-mila-blue); }
+.qp-quiz-letter{ font-weight:700; color:var(--qp-mila-blue); }
+.qp-quiz-btn{ width:auto; margin-top:4px; }
+.qp-quiz-result{
+  border-radius:10px;
+  padding:12px 14px;
+  margin-bottom:14px;
+  font-size:.92rem;
+}
+.qp-quiz-ok{ background:#e8f7ee; border:1px solid #b8e6c8; color:#1a6b38; }
+.qp-quiz-err{ background:#fdecec; border:1px solid #f5c2c0; color:#9b1c1c; }
+.qp-desafio-admin{ margin-top:24px; border-top:1px dashed #d7dbe0; padding-top:20px; }
+.qp-desafio-admin h4{ margin:0 0 12px; color:var(--qp-blue); }
+.qp-desafio-opcoes{ display:flex; flex-direction:column; gap:10px; margin:12px 0; }
+.qp-desafio-opcoes label{ display:flex; align-items:center; gap:8px; font-weight:600; color:var(--qp-blue); }
+.qp-desafio-opcoes input{ flex:1; font-weight:400; padding:9px 11px; border:1px solid #d7dbe0; border-radius:8px; }
+.qp-check{ display:inline-flex; align-items:center; gap:6px; font-weight:500; margin-left:12px; }
+
 .qp-api-warning{
   background:#fff8e1;
   border:1px solid #ffe08a;
