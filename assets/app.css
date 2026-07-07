@@ -250,6 +250,10 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
 .qp-block img{ max-width:100%; border-radius:8px; }
 .qp-block .qp-video{ position:relative; padding-bottom:56.25%; height:0; }
 .qp-block .qp-video iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:8px; }
+/* Faixa transparente sobre o topo do player: bloqueia o clique no título/logo
+   do YouTube (que levaria a abrir o vídeo fora do portal). Os controles de
+   play/pause (centro) e a barra inferior continuam funcionando normalmente. */
+.qp-block .qp-video .qp-video-guard{ position:absolute; top:0; left:0; right:0; height:62px; z-index:2; background:transparent; }
 
 /* comentários */
 .qp-comment{
@@ -283,6 +287,7 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
   font-family:inherit;
 }
 .qp-form textarea{ min-height:70px; resize:vertical; }
+.qp-form input[type="file"]{ background:#fff; cursor:pointer; padding:9px 12px; }
 .qp-form .qp-row{ display:flex; gap:10px; flex-wrap:wrap; }
 .qp-form .qp-row > *{ flex:1; min-width:140px; }
 .qp-btn-add{
