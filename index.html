@@ -214,13 +214,18 @@
 }
 
 .card{
+  display:block;
   background:white;
   border-radius:18px;
   padding:25px;
   box-shadow:0 8px 20px rgba(0,0,0,.08);
   transition:.3s;
+  text-decoration:none;
+  color:inherit;
+  cursor:pointer;
 }
 
+a.card:hover,
 .card:hover{
   transform:translateY(-5px);
   border-left:6px solid var(--qp-yellow);

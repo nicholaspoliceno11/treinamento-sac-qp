@@ -33,35 +33,35 @@ Aprenda, evolua e torne-se referência em atendimento.
 
 <div class="cards">
 
-<div class="card">
+<a class="card" href="#/onboarding">
 <h3>🚀 Onboarding</h3>
 Conheça nossa cultura.
-</div>
+</a>
 
-<div class="card">
+<a class="card" href="#/atendimento">
 <h3>💬 Atendimento</h3>
 Técnicas de excelência.
-</div>
+</a>
 
-<div class="card">
+<a class="card" href="#/prazos">
 <h3>💳 Financeiro</h3>
 PIX, Boleto e Cartão.
-</div>
+</a>
 
-<div class="card">
+<a class="card" href="#/antt">
 <h3>🚌 ANTT</h3>
 Legislação e benefícios.
-</div>
+</a>
 
-<div class="card">
+<a class="card" href="#/cms">
 <h3>⚙️ CMS</h3>
 Operação e SLA.
-</div>
+</a>
 
-<div class="card">
+<a class="card" href="#/videos">
 <h3>🎥 Academia</h3>
 Vídeos e treinamentos.
-</div>
+</a>
 
 </div>
 
