@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-<link rel="stylesheet" href="assets/app.css?v=9">
+<link rel="stylesheet" href="assets/app.css?v=10">
 
 <style>
 
@@ -282,9 +282,37 @@ th{
 
 </style>
 
+<script>
+window.QP_CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbxt7utGL-FKQTrdIlwLs7Es0EV4iGHud3jZI1gHFv2XdQ4HX3a3oS9bttZlm_pKkE2JQw/exec"
+};
+</script>
+
 </head>
 
-<body>
+<body class="qp-portal-locked">
+
+<div id="qp-login-overlay" class="qp-show">
+  <div class="qp-login-shell">
+    <div class="qp-login-hero">
+      <img class="qp-login-mila" src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
+      <div class="qp-login-welcome">
+        <strong>Olá! Eu sou a Mila 👋</strong>
+        <p>Sua Agente de Treinamento. Vamos juntos nessa jornada de excelência!</p>
+      </div>
+    </div>
+    <form class="qp-login-card" id="qp-login-form" autocomplete="on">
+      <h2>Treinamento Quero Passagem</h2>
+      <p class="qp-sub">Entre em contato com a gestão para atualizar a senha.</p>
+      <label for="qp-email">E-mail</label>
+      <input id="qp-email" name="email" type="email" required placeholder="seu.email@empresa.com">
+      <label for="qp-senha">Senha</label>
+      <input id="qp-senha" name="password" type="password" required placeholder="Sua senha">
+      <button class="qp-btn qp-btn-primary" type="submit" id="qp-login-btn">Entrar</button>
+      <div class="qp-login-msg" id="qp-login-msg"></div>
+    </form>
+  </div>
+</div>
 
 <div id="app">
 Carregando Treinamento Quero Passagem...
@@ -294,13 +322,7 @@ Carregando Treinamento Quero Passagem...
   <img src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
 </div>
 
-<script src="assets/config.js?v=9"></script>
-<script>
-window.QP_CONFIG = window.QP_CONFIG || {};
-if (!window.QP_CONFIG.API_URL) {
-  window.QP_CONFIG.API_URL = "https://script.google.com/macros/s/AKfycbxt7utGL-FKQTrdIlwLs7Es0EV4iGHud3jZI1gHFv2XdQ4HX3a3oS9bttZlm_pKkE2JQw/exec";
-}
-</script>
+<script src="assets/config.js?v=10"></script>
 
 <script>
 window.$docsify = {
@@ -318,7 +340,7 @@ window.$docsify = {
 }
 </script>
 
-<script src="assets/app.js?v=9"></script>
+<script src="assets/app.js?v=10"></script>
 
 <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
 <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>

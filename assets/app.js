@@ -18,12 +18,6 @@
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
   var ACADEMIA_TOPIC = "videos";
-  var SESSION_VERSION = 3;
-  var SESSION_KEY = "qp_session";
-
-  function sessionStore() {
-    try { return window.sessionStorage; } catch (e) { return null; }
-  }
 
   var state = {
     session: null,        // { nome, email, perfil, acessoAcademia }
@@ -74,38 +68,22 @@
     }).then(function (r) { return r.json(); });
   }
 
-  // -------------------------------------------------- sessão (sessionStorage — novo acesso pede login)
+  // -------------------------------------------------- sessão (somente memória — cada acesso ao link pede login)
   function loadSession() {
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
-    try {
-      var store = sessionStore();
-      var raw = store ? store.getItem(SESSION_KEY) : null;
-      state.session = raw ? JSON.parse(raw) : null;
-    } catch (e) { state.session = null; }
-    if (state.session && state.session._v !== SESSION_VERSION) {
-      state.session = null;
-      try { var s = sessionStore(); if (s) s.removeItem(SESSION_KEY); } catch (e2) {}
-    }
+    try { localStorage.removeItem("qp_session"); } catch (e) {}
+    try { sessionStorage.removeItem("qp_session"); } catch (e) {}
+    state.session = null;
     state.accessResolved = false;
-    if (state.session) delete state.session.acessoAcademia;
   }
   function saveSession(sess) {
     state.session = sess;
-    if (state.session) state.session._v = SESSION_VERSION;
-    try {
-      var store = sessionStore();
-      if (store) store.setItem(SESSION_KEY, JSON.stringify(state.session));
-    } catch (e) {}
+    state.accessResolved = true;
   }
   function clearSession() {
     state.session = null;
     state.concluidos = [];
     state.percent = 0;
     state.accessResolved = false;
-    try {
-      var store = sessionStore();
-      if (store) store.removeItem(SESSION_KEY);
-    } catch (e) {}
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
   function parseAcademiaAccess(val) {
@@ -134,32 +112,11 @@
   }
 
   // -------------------------------------------------- overlay de login
-  function buildOverlay() {
-    if (document.getElementById("qp-login-overlay")) return;
-    var ov = document.createElement("div");
-    ov.id = "qp-login-overlay";
-    ov.innerHTML =
-      '<div class="qp-login-shell">' +
-      '  <div class="qp-login-hero">' +
-      '    <img class="qp-login-mila" src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">' +
-      '    <div class="qp-login-welcome">' +
-      '      <strong>Olá! Eu sou a Mila 👋</strong>' +
-      '      <p>Sua Agente de Treinamento. Vamos juntos nessa jornada de excelência!</p>' +
-      '    </div>' +
-      '  </div>' +
-      '  <form class="qp-login-card" id="qp-login-form" autocomplete="on">' +
-      '    <h2>Treinamento Quero Passagem</h2>' +
-      '    <p class="qp-sub">Entre em contato com a gestão para atualizar a senha.</p>' +
-      '    <label for="qp-email">E-mail</label>' +
-      '    <input id="qp-email" name="email" type="email" required placeholder="seu.email@empresa.com">' +
-      '    <label for="qp-senha">Senha</label>' +
-      '    <input id="qp-senha" name="password" type="password" required placeholder="Sua senha">' +
-      '    <button class="qp-btn qp-btn-primary" type="submit" id="qp-login-btn">Entrar</button>' +
-      '    <div class="qp-login-msg" id="qp-login-msg"></div>' +
-      '  </form>' +
-      '</div>';
-    document.body.appendChild(ov);
-    document.getElementById("qp-login-form").addEventListener("submit", onLogin);
+  function bindOverlay() {
+    var form = document.getElementById("qp-login-form");
+    if (!form || form._qpBound) return;
+    form._qpBound = true;
+    form.addEventListener("submit", onLogin);
   }
 
   function showOverlay(show) {
@@ -234,10 +191,6 @@
           if (res.perfil) state.session.perfil = res.perfil;
           state.session.acessoAcademia = parseAcademiaAccess(res.acessoAcademia);
           state.accessResolved = true;
-          try {
-            var store = sessionStore();
-            if (store) store.setItem(SESSION_KEY, JSON.stringify(state.session));
-          } catch (e) {}
           recompute();
           return true;
         }
@@ -764,19 +717,14 @@
 
   // -------------------------------------------------- init
   function init() {
-    // Sem API configurada => portal inativo e site aberto como hoje.
-    if (!apiConfigured()) return;
-    buildOverlay();
+    if (!apiConfigured()) {
+      showOverlay(false);
+      return;
+    }
+    bindOverlay();
     loadSession();
     showOverlay(true);
-    if (state.session) {
-      hydrate().then(function (valid) {
-        showOverlay(!valid);
-        refreshUI();
-      });
-    } else {
-      refreshUI();
-    }
+    refreshUI();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

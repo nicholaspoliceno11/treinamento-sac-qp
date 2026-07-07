@@ -361,6 +361,9 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
 .qp-check{ display:inline-flex; align-items:center; gap:6px; font-weight:500; margin-left:12px; }
 
 body.qp-portal-locked{ overflow:hidden; }
+body.qp-portal-locked #app,
+body.qp-portal-locked .sidebar,
+body.qp-portal-locked #mila-float{ visibility:hidden; }
 
 .qp-sidebar-auth{
   margin:20px 16px 24px;
