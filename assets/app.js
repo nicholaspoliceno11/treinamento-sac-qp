@@ -18,7 +18,7 @@
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
   var ACADEMIA_TOPIC = "videos";
-  var SESSION_VERSION = 1;
+  var SESSION_VERSION = 2;
 
   var state = {
     session: null,        // { nome, email, perfil, acessoAcademia }
@@ -209,7 +209,10 @@
     state.percent = Math.round((effectiveConcluidos().length / total) * 100);
   }
   function hydrate() {
-    if (!state.session || !apiConfigured()) { recompute(); return Promise.resolve(); }
+    if (!state.session || !apiConfigured()) {
+      recompute();
+      return Promise.resolve(false);
+    }
     return api({ action: "getState", email: state.session.email })
       .then(function (res) {
         if (res && res.ok) {
@@ -219,9 +222,16 @@
           state.accessResolved = true;
           try { localStorage.setItem("qp_session", JSON.stringify(state.session)); } catch (e) {}
           recompute();
+          return true;
         }
+        clearSession();
+        return false;
       })
-      .catch(function () {});
+      .catch(function () {
+        // Sem conexão com a API: mantém sessão local para não bloquear o acesso
+        state.accessResolved = true;
+        return !!state.session;
+      });
   }
 
   function setProgress(topic, done) {
@@ -718,12 +728,14 @@
     if (!apiConfigured()) return;
     buildOverlay();
     loadSession();
+    showOverlay(true);
     if (state.session) {
-      hydrate().then(refreshUI);
-      showOverlay(false);
+      hydrate().then(function (valid) {
+        showOverlay(!valid);
+        refreshUI();
+      });
     } else {
       refreshUI();
-      showOverlay(true);
     }
   }
 
