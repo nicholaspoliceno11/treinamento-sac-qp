@@ -269,9 +269,12 @@
         }
         if (res && res.error === "auth") {
           clearSession();
+          showOverlay(true);
+          loginMsg("Sessão expirada. Entre novamente.", "error");
           return false;
         }
         clearSession();
+        showOverlay(true);
         return false;
       })
       .catch(function () {
