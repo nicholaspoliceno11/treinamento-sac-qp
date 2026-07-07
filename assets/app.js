@@ -20,7 +20,7 @@
   var ACADEMIA_TOPIC = "videos";
 
   var state = {
-    session: null,        // { nome, email, perfil, acessoAcademia }
+    session: null,        // { nome, email, perfil, acessoAcademia, token }
     concluidos: [],       // ["onboarding", ...]
     percent: 0,
     accessResolved: false // true após login/hydrate confirmarem acesso na API
@@ -102,12 +102,23 @@
   function api(payload) {
     var url = getApiUrl();
     if (!url) return Promise.reject({ code: "noapi" });
+    if (state.session && state.session.token) {
+      payload.sessionToken = state.session.token;
+    }
     return fetch(url, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
       redirect: "follow"
-    }).then(function (r) { return r.json(); });
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res && res.error === "auth" && state.session) {
+        clearSession();
+        showOverlay(true);
+        loginMsg("Sessão expirada. Entre novamente.", "error");
+        refreshUI();
+      }
+      return res;
+    });
   }
 
   // -------------------------------------------------- sessão (somente memória — cada acesso ao link pede login)
@@ -193,15 +204,28 @@
             nome: res.nome,
             email: res.email || email,
             perfil: res.perfil,
-            acessoAcademia: parseAcademiaAccess(res.acessoAcademia)
+            acessoAcademia: parseAcademiaAccess(res.acessoAcademia),
+            token: res.sessionToken || ""
           });
           state.accessResolved = true;
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
+          if (res.weakPassword) {
+            setTimeout(function () {
+              alert("Sua senha é fraca. Peça à gestão uma senha com 8+ caracteres, letras e números.");
+            }, 400);
+          }
           return hydrate().then(refreshUI);
         }
-        if (res && res.error === "senha") {
-          loginMsg("Senha incorreta. Solicite a atualização da sua senha com a gestão.", "error");
+        if (res && res.error === "bloqueado") {
+          var secs = res.retryAfter || 900;
+          loginMsg("Muitas tentativas incorretas. Aguarde " + Math.ceil(secs / 60) + " min e tente de novo.", "error");
+        } else if (res && res.error === "senha") {
+          var msg = "Senha incorreta. Solicite a atualização da sua senha com a gestão.";
+          if (res.attemptsLeft != null && res.attemptsLeft <= 2) {
+            msg += " Restam " + res.attemptsLeft + " tentativa(s) antes do bloqueio temporário.";
+          }
+          loginMsg(msg, "error");
         } else if (res && res.error === "usuario") {
           loginMsg("E-mail não encontrado no cadastro. Fale com a gestão.", "error");
         } else {
@@ -214,7 +238,14 @@
       .then(function () { btn.disabled = false; btn.textContent = "Entrar"; });
   }
 
-  function logout() { clearSession(); refreshUI(); showOverlay(true); }
+  function logout() {
+    if (state.session && state.session.token && apiConfigured()) {
+      api({ action: "logout", email: state.session.email }).catch(function () {});
+    }
+    clearSession();
+    refreshUI();
+    showOverlay(true);
+  }
 
   // -------------------------------------------------- progresso
   function recompute() {
@@ -235,6 +266,10 @@
           state.accessResolved = true;
           recompute();
           return true;
+        }
+        if (res && res.error === "auth") {
+          clearSession();
+          return false;
         }
         clearSession();
         return false;

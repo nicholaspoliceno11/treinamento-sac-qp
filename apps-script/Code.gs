@@ -13,6 +13,10 @@
  *   (a coluna "ACESSO ACADEMIA" na aba Login Treinamento — use SIM ou NÃO)
  *   OU uma aba separada "ACESSO ACADEMIA" com colunas NOME + ACESSO (Sim/Não)
  *
+ * Segurança: senhas são armazenadas como hash SHA-256 com sal (formato sha256$...).
+ * No primeiro login com senha em texto puro, o script converte automaticamente para hash.
+ * Sessões válidas por 12h ficam na aba "Sessoes"; tentativas de login na aba "LoginTentativas".
+ *
  * As abas auxiliares (Progresso, Comentarios, Conteudo) são criadas
  * automaticamente na primeira execução.
  */
@@ -20,6 +24,14 @@
 var SPREADSHEET_ID = "1TxJC6cboGQiQwu5faAqZZo-vXIpO_6uRI2e_DKIlRgA";
 var LOGIN_SHEET = "Login Treinamento"; // nome da aba com os usuários
 var ACESSO_ACADEMIA_SHEET = "ACESSO ACADEMIA"; // aba opcional (NOME + ACESSO)
+
+// --- Segurança (sessão, senha, brute-force) ---
+var SESSION_SHEET = "Sessoes";
+var LOGIN_ATTEMPTS_SHEET = "LoginTentativas";
+var SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
+var MAX_LOGIN_ATTEMPTS = 5;
+var LOCKOUT_MS = 15 * 60 * 1000; // 15 minutos após N erros
+var PASSWORD_HASH_PREFIX = "sha256$";
 
 function getSS() {
   return SPREADSHEET_ID
@@ -38,13 +50,14 @@ function doPost(e) {
     var req = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     switch (req.action) {
       case "login":       return json(handleLogin(req));
+      case "logout":      return json(handleLogout(req));
       case "getState":    return json(handleGetState(req));
       case "setProgress": return json(handleSetProgress(req));
-      case "getComments": return json({ ok: true, comments: readTable("Comentarios", req.topic) });
+      case "getComments": return json(handleGetComments(req));
       case "addComment":  return json(handleAddComment(req));
-      case "getContent":  return json({ ok: true, blocks: readTable("Conteudo", req.topic) });
+      case "getContent":  return json(handleGetContent(req));
       case "addContent":  return json(handleAddContent(req));
-      case "getDuvidas":  return json({ ok: true, duvidas: listDuvidas() });
+      case "getDuvidas":  return json(handleGetDuvidas(req));
       case "addDuvida":   return json(handleAddDuvida(req));
       case "answerDuvida":return json(handleAnswerDuvida(req));
       case "getDesafio":    return json(handleGetDesafio(req));
@@ -219,32 +232,293 @@ function findUser(email) {
 
 function cell(u, key) { return u.cols[key] >= 0 ? norm(u.data[u.cols[key]]) : ""; }
 
+/* ---------------- Segurança: hash de senha ---------------- */
+function sha256Hex(input) {
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(input));
+  return digest.map(function (b) {
+    var v = (b < 0 ? b + 256 : b).toString(16);
+    return v.length === 1 ? "0" + v : v;
+  }).join("");
+}
+
+function randomSalt() {
+  return sha256Hex(Utilities.getUuid() + "|" + new Date().getTime() + "|" + Math.random()).slice(0, 32);
+}
+
+function hashPassword(plain) {
+  var salt = randomSalt();
+  return PASSWORD_HASH_PREFIX + salt + "$" + sha256Hex(salt + normPw(plain));
+}
+
+function isHashedPassword(stored) {
+  return String(stored || "").indexOf(PASSWORD_HASH_PREFIX) === 0;
+}
+
+function verifyStoredPassword(stored, plain) {
+  stored = normPw(stored);
+  plain = normPw(plain);
+  if (!stored || !plain) return false;
+  if (isHashedPassword(stored)) {
+    var parts = stored.split("$");
+    if (parts.length !== 3) return false;
+    var salt = parts[1];
+    var expected = parts[2];
+    return sha256Hex(salt + plain) === expected;
+  }
+  return stored === plain;
+}
+
+function isStrongPassword(plain) {
+  var p = normPw(plain);
+  if (p.length < 8) return false;
+  if (!/[A-Za-z]/.test(p)) return false;
+  if (!/[0-9]/.test(p)) return false;
+  return true;
+}
+
+function migratePasswordCell(u, colKey, plain) {
+  var col = u.cols[colKey];
+  if (col < 0) return;
+  var stored = normPw(u.data[col]);
+  if (!stored || isHashedPassword(stored)) return;
+  loginSheet().getRange(u.row, col + 1).setValue(hashPassword(plain));
+}
+
+function migratePasswordsOnLogin(u, plain) {
+  migratePasswordCell(u, "senha", plain);
+  migratePasswordCell(u, "senhaTemp", plain);
+}
+
+/**
+ * Executar manualmente no editor Apps Script (uma vez) para hashear
+ * todas as senhas em texto puro já cadastradas na planilha.
+ */
+function migrateAllPasswordsInSheet() {
+  var ld = loginData();
+  var c = ld.cols;
+  var n = 0;
+  for (var i = 1; i < ld.values.length; i++) {
+    var row = ld.values[i];
+    var u = { row: i + 1, data: row, cols: c };
+    if (c.senha >= 0) {
+      var s = normPw(row[c.senha]);
+      if (s && !isHashedPassword(s)) {
+        loginSheet().getRange(i + 1, c.senha + 1).setValue(hashPassword(s));
+        n++;
+      }
+    }
+    if (c.senhaTemp >= 0) {
+      var t = normPw(row[c.senhaTemp]);
+      if (t && !isHashedPassword(t)) {
+        loginSheet().getRange(i + 1, c.senhaTemp + 1).setValue(hashPassword(t));
+        n++;
+      }
+    }
+  }
+  return "Senhas migradas: " + n;
+}
+
+/* ---------------- Segurança: sessão / token ---------------- */
+function sessionsSheet() { return ensureSheet(SESSION_SHEET, ["EMAIL", "TOKEN", "EXPIRES_AT"]); }
+
+function purgeExpiredSessions() {
+  var sh = sessionsSheet();
+  var data = sh.getDataRange().getValues();
+  var now = Date.now();
+  for (var i = data.length - 1; i >= 1; i--) {
+    var exp = new Date(data[i][2]).getTime();
+    if (isNaN(exp) || exp < now) sh.deleteRow(i + 1);
+  }
+}
+
+function createSession(email) {
+  purgeExpiredSessions();
+  var sh = sessionsSheet();
+  var data = sh.getDataRange().getValues();
+  var t = norm(email).toLowerCase();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (norm(data[i][0]).toLowerCase() === t) sh.deleteRow(i + 1);
+  }
+  var token = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
+  var expires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  sh.appendRow([norm(email), token, expires]);
+  return token;
+}
+
+function findSessionByToken(token) {
+  var tok = norm(token);
+  if (!tok) return null;
+  var sh = sessionsSheet();
+  var data = sh.getDataRange().getValues();
+  var now = Date.now();
+  for (var i = 1; i < data.length; i++) {
+    if (norm(data[i][1]) !== tok) continue;
+    var exp = new Date(data[i][2]).getTime();
+    if (isNaN(exp) || exp < now) return null;
+    return { email: norm(data[i][0]), token: tok, row: i + 1 };
+  }
+  return null;
+}
+
+function validateSession(email, token) {
+  var sess = findSessionByToken(token);
+  if (!sess) return null;
+  if (norm(sess.email).toLowerCase() !== norm(email).toLowerCase()) return null;
+  return sess;
+}
+
+function revokeSession(email, token) {
+  var sh = sessionsSheet();
+  var data = sh.getDataRange().getValues();
+  var t = norm(email).toLowerCase();
+  var tok = norm(token);
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (norm(data[i][1]) === tok && norm(data[i][0]).toLowerCase() === t) {
+      sh.deleteRow(i + 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+function requireAuth(req) {
+  var email = norm(req.email);
+  var token = norm(req.sessionToken);
+  if (!email || !token) return { ok: false, error: "auth" };
+  if (!validateSession(email, token)) return { ok: false, error: "auth" };
+  var u = findUser(email);
+  if (!u) return { ok: false, error: "auth" };
+  return { ok: true, user: u };
+}
+
+function requireSession(req) {
+  var token = norm(req.sessionToken);
+  if (!token) return { ok: false, error: "auth" };
+  var sess = findSessionByToken(token);
+  if (!sess) return { ok: false, error: "auth" };
+  return { ok: true, email: sess.email };
+}
+
+/* ---------------- Segurança: brute-force no login ---------------- */
+function loginAttemptsSheet() {
+  return ensureSheet(LOGIN_ATTEMPTS_SHEET, ["EMAIL", "FAILURES", "LOCKED_UNTIL", "LAST_ATTEMPT"]);
+}
+
+function findLoginAttemptRow(email) {
+  var sh = loginAttemptsSheet();
+  var data = sh.getDataRange().getValues();
+  var t = norm(email).toLowerCase();
+  for (var i = 1; i < data.length; i++) {
+    if (norm(data[i][0]).toLowerCase() === t) {
+      return {
+        row: i + 1,
+        failures: Number(data[i][1]) || 0,
+        lockedUntil: norm(data[i][2]),
+        lastAttempt: norm(data[i][3])
+      };
+    }
+  }
+  return null;
+}
+
+function checkLoginLockout(email) {
+  var row = findLoginAttemptRow(email);
+  if (!row) return { locked: false, attemptsLeft: MAX_LOGIN_ATTEMPTS };
+  if (row.lockedUntil) {
+    var until = new Date(row.lockedUntil).getTime();
+    if (!isNaN(until) && until > Date.now()) {
+      return { locked: true, retryAfter: Math.ceil((until - Date.now()) / 1000) };
+    }
+  }
+  if (row.failures >= MAX_LOGIN_ATTEMPTS) {
+    clearLoginAttempts(email);
+    return { locked: false, attemptsLeft: MAX_LOGIN_ATTEMPTS };
+  }
+  return { locked: false, attemptsLeft: Math.max(0, MAX_LOGIN_ATTEMPTS - row.failures) };
+}
+
+function recordFailedLogin(email) {
+  var sh = loginAttemptsSheet();
+  var now = new Date().toISOString();
+  var row = findLoginAttemptRow(email);
+  if (!row) {
+    sh.appendRow([norm(email), 1, "", now]);
+    return 1;
+  }
+  var failures = row.failures + 1;
+  var lockedUntil = "";
+  if (failures >= MAX_LOGIN_ATTEMPTS) {
+    lockedUntil = new Date(Date.now() + LOCKOUT_MS).toISOString();
+  }
+  sh.getRange(row.row, 2, 1, 3).setValues([[failures, lockedUntil, now]]);
+  return failures;
+}
+
+function clearLoginAttempts(email) {
+  var sh = loginAttemptsSheet();
+  var data = sh.getDataRange().getValues();
+  var t = norm(email).toLowerCase();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (norm(data[i][0]).toLowerCase() === t) sh.deleteRow(i + 1);
+  }
+}
+
 function handleLogin(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var email = norm(req.email);
+  var lock = checkLoginLockout(email);
+  if (lock.locked) return { ok: false, error: "bloqueado", retryAfter: lock.retryAfter };
+
+  var u = findUser(email);
+  if (!u) {
+    recordFailedLogin(email);
+    return { ok: false, error: "usuario" };
+  }
+
   var prov = normPw(req.senha);
   var s1 = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]) : "";
   var s2 = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]) : "";
-  var ok = (s1 !== "" && prov === s1) || (s2 !== "" && prov === s2);
-  if (!ok) return { ok: false, error: "senha" };
+  var ok = (s1 !== "" && verifyStoredPassword(s1, prov)) ||
+           (s2 !== "" && verifyStoredPassword(s2, prov));
+  if (!ok) {
+    recordFailedLogin(email);
+    lock = checkLoginLockout(email);
+    if (lock.locked) return { ok: false, error: "bloqueado", retryAfter: lock.retryAfter };
+    return { ok: false, error: "senha", attemptsLeft: lock.attemptsLeft };
+  }
+
+  clearLoginAttempts(email);
+  migratePasswordsOnLogin(u, prov);
+
+  var weakPassword = !isStrongPassword(prov);
+  var userEmail = cell(u, "email");
   return {
     ok: true,
+    sessionToken: createSession(userEmail),
     nome: cell(u, "nome"),
-    email: cell(u, "email"),
+    email: userEmail,
     perfil: cell(u, "perfil") || "Atendente",
-    acessoAcademia: !!hasAcademiaAccess(u)
+    acessoAcademia: !!hasAcademiaAccess(u),
+    weakPassword: weakPassword
   };
 }
 
+function handleLogout(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  revokeSession(cell(auth.user, "email"), norm(req.sessionToken));
+  return { ok: true };
+}
+
 function handleGetState(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
   return {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
     acessoAcademia: !!hasAcademiaAccess(u),
-    concluidos: completedTopics(req.email)
+    concluidos: completedTopics(cell(u, "email"))
   };
 }
 
@@ -264,8 +538,10 @@ function handleDebug(req) {
     out.provLen = normPw(req.senha).length;
     out.senhaLen = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]).length : -1;
     out.senhaTempLen = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]).length : -1;
-    out.matchSenha = u.cols.senha >= 0 && normPw(req.senha) === normPw(u.data[u.cols.senha]);
-    out.matchTemp = u.cols.senhaTemp >= 0 && normPw(req.senha) === normPw(u.data[u.cols.senhaTemp]);
+    out.senhaHashed = u.cols.senha >= 0 && isHashedPassword(u.data[u.cols.senha]);
+    out.senhaTempHashed = u.cols.senhaTemp >= 0 && isHashedPassword(u.data[u.cols.senhaTemp]);
+    out.matchSenha = u.cols.senha >= 0 && verifyStoredPassword(u.data[u.cols.senha], req.senha);
+    out.matchTemp = u.cols.senhaTemp >= 0 && verifyStoredPassword(u.data[u.cols.senhaTemp], req.senha);
   } else {
     out.found = false;
   }
@@ -287,9 +563,12 @@ function completedTopics(email) {
 }
 
 function handleSetProgress(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var email = cell(auth.user, "email");
   var sh = progressoSheet();
   var data = sh.getDataRange().getValues();
-  var email = norm(req.email), topic = norm(req.topic);
+  var topic = norm(req.topic);
   var t = email.toLowerCase();
   var rowIndex = -1;
   for (var i = 1; i < data.length; i++) {
@@ -313,9 +592,16 @@ function writeAndamento(email, percent) {
 }
 
 /* ---------------- Comentários e Conteúdo ---------------- */
+function handleGetComments(req) {
+  var sess = requireSession(req);
+  if (!sess.ok) return sess;
+  return { ok: true, comments: readTable("Comentarios", req.topic) };
+}
+
 function handleAddComment(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
   var sh = ensureSheet("Comentarios", ["TOPICO", "NOME", "EMAIL", "PERFIL", "TEXTO", "TS"]);
   sh.appendRow([
     norm(req.topic), cell(u, "nome"), cell(u, "email"),
@@ -324,9 +610,16 @@ function handleAddComment(req) {
   return { ok: true };
 }
 
+function handleGetContent(req) {
+  var sess = requireSession(req);
+  if (!sess.ok) return sess;
+  return { ok: true, blocks: readTable("Conteudo", req.topic) };
+}
+
 function handleAddContent(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
   if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
   var sh = ensureSheet("Conteudo", ["TOPICO", "TIPO", "VALOR", "AUTOR", "EMAIL", "TS"]);
   sh.appendRow([
@@ -377,9 +670,16 @@ function listDuvidas() {
   return out.reverse(); // mais recentes primeiro
 }
 
+function handleGetDuvidas(req) {
+  var sess = requireSession(req);
+  if (!sess.ok) return sess;
+  return { ok: true, duvidas: listDuvidas() };
+}
+
 function handleAddDuvida(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
   var texto = norm(req.texto);
   if (!texto) return { ok: false, message: "Dúvida vazia" };
   var id = "D" + new Date().getTime();
@@ -391,8 +691,9 @@ function handleAddDuvida(req) {
 }
 
 function handleAnswerDuvida(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
   if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
   var resposta = norm(req.resposta);
   if (!resposta) return { ok: false, message: "Resposta vazia" };
@@ -494,19 +795,22 @@ function latestDesafioResposta(email, questaoId) {
 }
 
 function handleGetDesafio(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
+  var email = cell(u, "email");
   var admin = /admin/i.test(cell(u, "perfil"));
   return {
     ok: true,
     perguntas: listDesafioPerguntas(admin),
-    respostas: listDesafioRespostasPorEmail(req.email)
+    respostas: listDesafioRespostasPorEmail(email)
   };
 }
 
 function handleAddDesafioPergunta(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
   if (!/admin/i.test(cell(u, "perfil"))) return { ok: false, error: "perfil" };
   var pergunta = norm(req.pergunta);
   if (!pergunta) return { ok: false, message: "Pergunta vazia" };
@@ -527,20 +831,22 @@ function handleAddDesafioPergunta(req) {
 }
 
 function handleSubmitDesafioResposta(req) {
-  var u = findUser(req.email);
-  if (!u) return { ok: false, error: "usuario" };
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var u = auth.user;
+  var email = cell(u, "email");
   var questaoId = norm(req.questaoId);
   var escolha = stripAccents(norm(req.escolha)).toUpperCase();
   if (!questaoId || "ABCD".indexOf(escolha) < 0) return { ok: false, message: "Dados inválidos" };
   var q = findDesafioPergunta(questaoId);
   if (!q || !q.ativo) return { ok: false, message: "Pergunta não encontrada ou inativa" };
-  var latest = latestDesafioResposta(req.email, questaoId);
+  var latest = latestDesafioResposta(email, questaoId);
   if (latest && latest.acertou) return { ok: true, acertou: true, jaAcertou: true };
   var correta = stripAccents(norm(q.correta)).toUpperCase();
   var acertou = escolha === correta;
   var id = "R" + new Date().getTime();
   desafioRespostasSheet().appendRow([
-    id, questaoId, cell(u, "email"), cell(u, "nome"), escolha,
+    id, questaoId, email, cell(u, "nome"), escolha,
     acertou ? "SIM" : "NAO", new Date().toISOString()
   ]);
   return { ok: true, acertou: acertou };

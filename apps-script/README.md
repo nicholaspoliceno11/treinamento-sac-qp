@@ -38,25 +38,43 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
   - Administradores sempre têm acesso.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
 - **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
+  As senhas são gravadas como **hash SHA-256 com sal** (`sha256$...`). No primeiro login
+  com senha em texto puro, o script converte automaticamente. Para migrar todas de uma vez,
+  execute `migrateAllPasswordsInSheet` no editor Apps Script.
+- **Senha forte recomendada**: mínimo 8 caracteres, com letras e números. Logins com senha
+  fraca são aceitos, mas o portal avisa o usuário.
 
-As abas **Progresso**, **Comentarios** e **Conteudo** são criadas automaticamente.
+As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes** e **LoginTentativas** são criadas automaticamente.
+
+## Segurança
+
+| Medida | Comportamento |
+|---|---|
+| **Token de sessão** | O `login` devolve `sessionToken` (válido 12 h). Todas as demais ações exigem `sessionToken` — não basta enviar só o e-mail. |
+| **Hash de senha** | Planilha guarda `sha256$<sal>$<hash>`, não texto puro. Migração automática no login ou em lote via `migrateAllPasswordsInSheet`. |
+| **Anti brute-force** | Após 5 senhas erradas, bloqueio de 15 min por e-mail (`error: "bloqueado"`). |
+| **Compartilhamento** | Restrinja quem tem acesso de edição à planilha — mesmo com hash, proteja o cadastro. |
 
 ## Contrato da API (referência)
 
-`POST` com corpo JSON `{ "action": "...", ... }`:
+`POST` com corpo JSON `{ "action": "...", ... }`.
+
+Ações autenticadas exigem `sessionToken` (retornado no login). Ações com identidade do usuário
+também exigem `email` correspondente à sessão.
 
 | action | envia | retorna |
 |---|---|---|
-| `login` | email, senha | `{ok, nome, email, perfil, acessoAcademia}` ou `{ok:false, error:"senha"\|"usuario"}` |
-| `getState` | email | `{ok, nome, perfil, acessoAcademia, concluidos:[...]}` |
-| `setProgress` | email, topic, done, total | `{ok, concluidos:[...], percent}` |
-| `getComments` | topic | `{ok, comments:[...]}` |
-| `addComment` | email, topic, texto | `{ok}` |
-| `getContent` | topic | `{ok, blocks:[...]}` |
-| `addContent` | email, topic, tipo, valor | `{ok}` ou `{ok:false, error:"perfil"}` (só admin) |
-| `getDesafio` | email | `{ok, perguntas:[...], respostas:[...]}` — respostas só do próprio usuário |
-| `addDesafioPergunta` | email, pergunta, opcoes `{A,B,C,D}`, correta, ativo | `{ok, id}` (só admin) |
-| `submitDesafioResposta` | email, questaoId, escolha (`A`–`D`) | `{ok, acertou}` — pode refazer se errou |
+| `login` | email, senha | `{ok, sessionToken, nome, email, perfil, acessoAcademia, weakPassword?}` ou `{ok:false, error:"senha"\|"usuario"\|"bloqueado", retryAfter?, attemptsLeft?}` |
+| `logout` | email, sessionToken | `{ok}` |
+| `getState` | email, sessionToken | `{ok, nome, perfil, acessoAcademia, concluidos:[...]}` ou `{ok:false, error:"auth"}` |
+| `setProgress` | email, sessionToken, topic, done, total | `{ok, concluidos:[...], percent}` |
+| `getComments` | sessionToken, topic | `{ok, comments:[...]}` |
+| `addComment` | email, sessionToken, topic, texto | `{ok}` |
+| `getContent` | sessionToken, topic | `{ok, blocks:[...]}` |
+| `addContent` | email, sessionToken, topic, tipo, valor | `{ok}` ou `{ok:false, error:"perfil"}` (só admin) |
+| `getDesafio` | email, sessionToken | `{ok, perguntas:[...], respostas:[...]}` — respostas só do próprio usuário |
+| `addDesafioPergunta` | email, sessionToken, pergunta, opcoes `{A,B,C,D}`, correta, ativo | `{ok, id}` (só admin) |
+| `submitDesafioResposta` | email, sessionToken, questaoId, escolha (`A`–`D`) | `{ok, acertou}` — pode refazer se errou |
 
 Abas **DesafioPerguntas** e **DesafioRespostas** são criadas automaticamente.
 Cada atendente só recebe suas próprias respostas em `getDesafio`.
