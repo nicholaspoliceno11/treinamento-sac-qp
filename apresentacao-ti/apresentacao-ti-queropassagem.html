@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Portal Treinamento Quero Passagem — Apresentação TI</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1d1d1f; line-height: 1.55; font-size: 11pt; margin: 0;
+  }
+  .cover {
+    page-break-after: always; min-height: 250mm; display: flex; flex-direction: column;
+    justify-content: center; padding: 24px 8px;
+    border-bottom: 8px solid #F5CF45;
+  }
+  .cover h1 { color: #1A3051; font-size: 28pt; margin: 0 0 8px; }
+  .cover .sub { color: #C06139; font-size: 14pt; font-weight: 600; margin-bottom: 24px; }
+  .cover p { color: #555; max-width: 680px; }
+  .badge { display: inline-block; background: #1A3051; color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 9pt; margin-top: 16px; }
+  h2 { color: #1A3051; font-size: 16pt; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 3px solid #F5CF45; page-break-after: avoid; }
+  h3 { color: #C06139; font-size: 12pt; margin: 18px 0 8px; page-break-after: avoid; }
+  p, li { margin: 0 0 8px; }
+  ul { margin: 0 0 12px 18px; padding: 0; }
+  .shot {
+    margin: 14px 0 18px; text-align: center; page-break-inside: avoid;
+  }
+  .shot img {
+    max-width: 100%; border: 1px solid #e5e7eb; border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(26,48,81,.12);
+  }
+  .shot.small img { max-width: 72%; }
+  .caption { font-size: 9pt; color: #666; margin-top: 6px; font-style: italic; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 10pt; }
+  th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f5f7fa; color: #1A3051; }
+  .qa { margin-bottom: 12px; page-break-inside: avoid; }
+  .q { font-weight: 700; color: #1A3051; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: #f7f5f2; border-left: 4px solid #C06139; padding: 12px 14px; border-radius: 8px; margin-bottom: 10px; }
+  .footer { margin-top: 24px; font-size: 9pt; color: #888; text-align: center; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="badge">Documento para TI — 18/07/2026</div>
+  <h1>Portal de Treinamento<br>Quero Passagem</h1>
+  <div class="sub">Proposta de formalização no domínio Google corporativo</div>
+  <p>Documento preparado para apresentação ao gerente de TI, com visão de arquitetura, custos, segurança, riscos e melhorias do portal de treinamento do SAC.</p>
+  <p><strong>URL atual:</strong> treinamento-qp.web.app</p>
+</section>
+
+<h2>1. O que é o projeto</h2>
+<p>Portal de treinamento do SAC com conteúdo em Markdown, login por perfil (Atendente, Backoffice, Administrador), acompanhamento de progresso, informativos internos, quiz (Desafio do Dia), chatbot Mila e gestão de usuários pelo admin.</p>
+<div class="shot">
+  <img src="file:///opt/cursor/artifacts/screenshots-ti/01-login.png" alt="Tela de login">
+  <div class="caption">Tela de login com a agente virtual Mila</div>
+</div>
+
+<h2>2. Telas do portal</h2>
+<div class="shot">
+  <img src="file:///opt/cursor/artifacts/screenshots-ti/02-home.png" alt="Página inicial">
+  <div class="caption">Página inicial — hero, progresso e informativos</div>
+</div>
+<div class="grid2">
+  <div class="shot small">
+    <img src="file:///opt/cursor/artifacts/screenshots-ti/03-sidebar.png" alt="Menu lateral">
+    <div class="caption">Menu lateral colapsável por tópicos</div>
+  </div>
+  <div class="shot small">
+    <img src="file:///opt/cursor/artifacts/screenshots-ti/04-conteudo.png" alt="Conteúdo de treinamento">
+    <div class="caption">Página de treinamento (ex.: Atendimento)</div>
+  </div>
+</div>
+<div class="shot">
+  <img src="file:///opt/cursor/artifacts/screenshots-ti/05-duvidas.png" alt="Central de dúvidas">
+  <div class="caption">Central de Dúvidas — fórum interno</div>
+</div>
+
+<h2>3. Arquitetura</h2>
+<table>
+  <tr><th>Camada</th><th>Tecnologia</th><th>Função</th></tr>
+  <tr><td>Front-end</td><td>HTML + Docsify + JS/CSS</td><td>Interface e conteúdo</td></tr>
+  <tr><td>Hospedagem</td><td>Firebase Hosting</td><td>Site estático (CDN Google)</td></tr>
+  <tr><td>API / lógica</td><td>Google Apps Script</td><td>Login, permissões, progresso, Mila</td></tr>
+  <tr><td>Dados</td><td>Google Sheets</td><td>Usuários, sessões, comentários, FAQ</td></tr>
+  <tr><td>Arquivos</td><td>Google Drive</td><td>Anexos de informativos (PDF/vídeo)</td></tr>
+</table>
+<p><strong>Fluxo:</strong> navegador → Firebase Hosting → Apps Script (API) → Google Sheets / Drive</p>
+
+<div class="page-break"></div>
+<h2>4. Pontos positivos</h2>
+<ul>
+  <li><strong>Custo muito baixo</strong> para o volume atual (Firebase free tier + Google Workspace)</li>
+  <li><strong>Feito sob medida</strong> para o fluxo do SAC da Quero Passagem</li>
+  <li><strong>Segurança implementada:</strong> hash de senha, token de sessão (12h), anti brute-force, troca obrigatória no 1º acesso</li>
+  <li><strong>Gestão de usuários</strong> pelo próprio portal (admin não edita planilha manualmente)</li>
+  <li><strong>Conteúdo ágil:</strong> treinamentos em Markdown; informativos e FAQ da Mila pelo admin</li>
+  <li><strong>Deploy automatizado</strong> via GitHub → Firebase</li>
+  <li><strong>Sem servidor próprio</strong> para manter</li>
+  <li><strong>Já em produção</strong> e validado pela operação</li>
+</ul>
+
+<h2>5. Custos estimados</h2>
+<table>
+  <tr><th>Item</th><th>Custo</th><th>Observação</th></tr>
+  <tr><td>Firebase Hosting</td><td>R$ 0</td><td>Plano Spark — site estático</td></tr>
+  <tr><td>Google Apps Script</td><td>R$ 0</td><td>Incluído no Google / Workspace</td></tr>
+  <tr><td>Google Sheets + Drive</td><td>R$ 0 extra</td><td>Dentro das cotas do Workspace</td></tr>
+  <tr><td>GitHub</td><td>R$ 0</td><td>Repositório do projeto</td></tr>
+  <tr><td>Domínio customizado</td><td>~R$ 0</td><td>DNS da empresa no Firebase</td></tr>
+  <tr><td>Manutenção</td><td>Tempo interno</td><td>Principal investimento real</td></tr>
+</table>
+<div class="card"><strong>Resumo:</strong> para o porte atual do SAC, o custo de infraestrutura é praticamente zero. O investimento é governança (conta corporativa, backups, políticas).</div>
+
+<h2>6. Pontos de atenção / riscos</h2>
+<ul>
+  <li>Hoje roda em <strong>conta Google pessoal</strong> — risco se a pessoa sair</li>
+  <li>Google Sheets como banco — limitado para escala muito alta e auditoria pesada</li>
+  <li>Apps Script tem <strong>quotas</strong> (requisições e tempo de execução)</li>
+  <li>Sem <strong>SSO / login Google corporativo</strong> ainda</li>
+  <li>Deploy do backend exige publicar nova versão no Apps Script manualmente</li>
+  <li>Dependência do ecossistema Google</li>
+  <li>Sem ambiente de homologação formal</li>
+</ul>
+
+<div class="page-break"></div>
+<h2>7. Perguntas frequentes do TI</h2>
+
+<div class="qa"><div class="q">Por que não usar um LMS pronto (Moodle, etc.)?</div>
+<p>Porque o portal é leve, customizado para o SAC, com custo quase zero e atualização rápida. É biblioteca operacional, não LMS genérico.</p></div>
+
+<div class="qa"><div class="q">O que precisa ser liberado no Google corporativo?</div>
+<p>Conta de serviço Workspace, Apps Script (Web App), Google Sheets, Google Drive, Firebase Hosting e opcionalmente domínio customizado (ex.: treinamento.queropassagem.com.br).</p></div>
+
+<div class="qa"><div class="q">As senhas ficam seguras?</div>
+<p>Sim: hash SHA-256 com sal, token de sessão, bloqueio após 5 tentativas, troca obrigatória no primeiro acesso e regras de senha forte.</p></div>
+
+<div class="qa"><div class="q">Apps Script como "Qualquer pessoa" é seguro?</div>
+<p>Sim — é configuração obrigatória de Web Apps públicas. A segurança vem do login + token + perfil validados no servidor.</p></div>
+
+<div class="qa"><div class="q">E LGPD?</div>
+<p>Há dados pessoais (nome, e-mail, progresso). Migrar para Workspace corporativo facilita contrato/DPA, backups e controle de acesso.</p></div>
+
+<div class="qa"><div class="q">Aguenta quantos usuários?</div>
+<p>Dezenas a algumas centenas com uso típico de treinamento. Para escala muito maior, evoluir backend para Cloud Run + banco relacional.</p></div>
+
+<div class="qa"><div class="q">Dá para SSO com Google da empresa?</div>
+<p>Ainda não, mas é melhoria viável com Google OAuth / Workspace.</p></div>
+
+<h2>8. Melhorias recomendadas</h2>
+<h3>Curto prazo (produção corporativa)</h3>
+<ul>
+  <li>Migrar planilha, Apps Script, Firebase e Drive para conta Google Workspace</li>
+  <li>Conta de serviço (não pessoal) como dona dos recursos</li>
+  <li>Domínio corporativo + política de backup da planilha</li>
+</ul>
+<h3>Médio prazo</h3>
+<ul>
+  <li>SSO com Google Workspace</li>
+  <li>Ambiente de homologação</li>
+  <li>Relatórios de progresso por equipe</li>
+  <li>Log de auditoria administrativa</li>
+</ul>
+
+<h2>9. O que solicitar ao TI</h2>
+<ol>
+  <li>Conta Google Workspace para o projeto (ex.: treinamento@empresa)</li>
+  <li>Transferência da planilha e Apps Script para essa conta</li>
+  <li>Projeto Firebase corporativo ou transferência de ownership</li>
+  <li>DNS para domínio do treinamento</li>
+  <li>Política de acesso mínimo à planilha (só admins editam)</li>
+  <li>Confirmação de Apps Script e Drive nas políticas do Workspace</li>
+</ol>
+
+<div class="card"><strong>Mensagem de fechamento:</strong> O portal já funciona em produção com custo quase zero. O pedido ao TI é formalizar a infraestrutura no domínio Google da empresa — conta corporativa, backups, domínio e políticas — para sair da conta pessoal com segurança.</div>
+
+<div class="footer">Portal Treinamento Quero Passagem — Documento gerado em 18/07/2026</div>
+</body>
+</html>
