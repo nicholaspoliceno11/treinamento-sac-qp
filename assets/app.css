@@ -569,6 +569,44 @@ body.qp-portal-locked #mila-float{ visibility:hidden; }
   font-size:.92rem;
   box-sizing:border-box;
 }
+.qp-password-field{
+  position:relative;
+}
+.qp-password-field input{
+  width:100%;
+  padding-right:44px;
+  box-sizing:border-box;
+}
+.qp-password-toggle{
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  width:34px;
+  height:34px;
+  border:none;
+  border-radius:8px;
+  background:transparent;
+  color:#6b7280;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+.qp-password-toggle:hover{ color:var(--qp-blue); background:#f3f5f8; }
+.qp-password-toggle svg{
+  width:20px;
+  height:20px;
+  fill:currentColor;
+}
+.qp-password-toggle .qp-eye-closed{ display:none; }
+.qp-password-toggle.qp-visible .qp-eye-open{ display:none; }
+.qp-password-toggle.qp-visible .qp-eye-closed{ display:block; }
+.qp-modal-card .qp-password-field input,
+.qp-admin-users .qp-password-field input{
+  width:100%;
+}
 .qp-users-table-wrap{ overflow-x:auto; margin:12px 0 8px; }
 .qp-users-table{
   width:100%;

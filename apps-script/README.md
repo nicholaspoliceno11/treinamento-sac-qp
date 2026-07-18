@@ -43,7 +43,7 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
   com senha em texto puro, o script converte automaticamente. Para migrar todas de uma vez,
   execute `migrateAllPasswordsInSheet` no editor Apps Script.
 - **Senha forte recomendada**: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo. Logins com senha
-  fraca exibem opção de troca imediata no portal (`changePassword`).
+  fraca exibem opção de troca imediata no portal (`changePassword`). Usuários novos (coluna `TROCAR SENHA = SIM`) são obrigados a definir senha pessoal no primeiro acesso.
 
 As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes**, **LoginTentativas**, **Informativos**, **InformativoLeituras**, **InformativoComentarios** e **MilaFAQ** são criadas automaticamente.
 
@@ -65,7 +65,7 @@ também exigem `email` correspondente à sessão.
 
 | action | envia | retorna |
 |---|---|---|
-| `login` | email, senha | `{ok, sessionToken, nome, email, perfil, acessoBackoffice, weakPassword?}` ou `{ok:false, error:"senha"\|"usuario"\|"bloqueado", retryAfter?, attemptsLeft?}` |
+| `login` | email, senha | `{ok, sessionToken, nome, email, perfil, acessoBackoffice, mustChangePassword?, weakPassword?}` ou `{ok:false, error:"senha"\|"usuario"\|"bloqueado", retryAfter?, attemptsLeft?}` |
 | `logout` | email, sessionToken | `{ok}` |
 | `getState` | email, sessionToken | `{ok, nome, perfil, acessoBackoffice, concluidos:[...]}` ou `{ok:false, error:"auth"}` |
 | `setProgress` | email, sessionToken, topic, done, total | `{ok, concluidos:[...], percent}` |

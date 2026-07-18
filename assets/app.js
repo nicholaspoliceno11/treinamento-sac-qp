@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "28";
+  var APP_VERSION = "29";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -218,6 +218,38 @@
     if (!text) el.className = "qp-login-msg";
   }
 
+  function passwordToggleButtonHtml() {
+    return '<button type="button" class="qp-password-toggle" aria-label="Mostrar senha">' +
+      '<svg class="qp-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 11.5c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z"/></svg>' +
+      '<svg class="qp-eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 2.3 2 3.6l2.9 2.9C3.5 8.2 2.4 9.8 1.5 11.5 3.23 15.39 7.5 18.5 12.5 18.5c1.8 0 3.5-.4 5-1.1l3.2 3.2 1.3-1.3L3.3 2.3zM12.5 16.5c-1.7 0-3.3-.5-4.7-1.3l2-2a4.9 4.9 0 004.7 3.3c1.2 0 2.3-.4 3.2-1.1l1.5 1.5c-1.2.8-2.6 1.3-4.2 1.3-2.5 0-4.7-.9-6.4-2.4l1.4-1.4c1.2.9 2.7 1.4 4.3 1.4 1.1 0 2.1-.3 3-.8l-1.6-1.6a4.9 4.9 0 01-2.4.6 5 5 0 01-5-5c0-.8.2-1.6.5-2.3L7.7 7.2c.8-.5 1.7-.9 2.8-.9 2.5 0 4.7.9 6.4 2.4l-1.4 1.4a4.9 4.9 0 00-4.3-1.4c-.5 0-1 .1-1.4.2l2.1 2.1c.4-.1.9-.2 1.3-.2a3 3 0 013 3c0 .4-.1.8-.2 1.2l2 2c.6-1 .9-2.1.9-3.2a5 5 0 00-5-5c-.9 0-1.7.2-2.5.6z"/></svg>' +
+      "</button>";
+  }
+
+  function bindPasswordToggle(root) {
+    if (!root) return;
+    root.querySelectorAll(".qp-password-field").forEach(function (wrap) {
+      if (wrap.dataset.qpPwBound) return;
+      wrap.dataset.qpPwBound = "1";
+      var input = wrap.querySelector("input");
+      var btn = wrap.querySelector(".qp-password-toggle");
+      if (!input || !btn) return;
+      btn.addEventListener("click", function () {
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.setAttribute("aria-label", show ? "Ocultar senha" : "Mostrar senha");
+        btn.classList.toggle("qp-visible", show);
+      });
+    });
+  }
+
+  function passwordFieldHtml(id, attrs) {
+    attrs = attrs || "";
+    return '<div class="qp-password-field">' +
+      '<input id="' + id + '" type="password" ' + attrs + ">" +
+      passwordToggleButtonHtml() +
+      "</div>";
+  }
+
   function passwordRequirementsText() {
     return "Mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo.";
   }
@@ -240,7 +272,7 @@
     modal.innerHTML =
       '<div class="qp-modal-card qp-weak-pw-card">' +
       '  <h3>Atualize sua senha</h3>' +
-      '  <p class="qp-hint">Sua senha atual é fraca. Crie uma senha mais segura para continuar usando o portal com segurança.</p>' +
+      '  <p class="qp-hint" id="qp-weak-pw-hint">Sua senha atual é fraca. Crie uma senha mais segura para continuar usando o portal com segurança.</p>' +
       '  <ul class="qp-pw-rules">' +
       '    <li>Mínimo de 8 caracteres</li>' +
       '    <li>Pelo menos 1 letra maiúscula</li>' +
@@ -248,9 +280,9 @@
       '    <li>Pelo menos 1 símbolo (ex.: ! @ # $)</li>' +
       '  </ul>' +
       '  <label for="qp-weak-pw-new">Nova senha</label>' +
-      '  <input id="qp-weak-pw-new" type="password" autocomplete="new-password" placeholder="Digite a nova senha">' +
+      passwordFieldHtml("qp-weak-pw-new", 'autocomplete="new-password" placeholder="Digite a nova senha"') +
       '  <label for="qp-weak-pw-confirm">Confirmar nova senha</label>' +
-      '  <input id="qp-weak-pw-confirm" type="password" autocomplete="new-password" placeholder="Repita a nova senha">' +
+      passwordFieldHtml("qp-weak-pw-confirm", 'autocomplete="new-password" placeholder="Repita a nova senha"') +
       '  <p class="qp-admin-pw-error" id="qp-weak-pw-error"></p>' +
       '  <div class="qp-modal-actions">' +
       '    <button type="button" class="qp-btn qp-btn-ghost" id="qp-weak-pw-later">Fazer depois</button>' +
@@ -258,15 +290,19 @@
       '  </div>' +
       '</div>';
     document.body.appendChild(modal);
+    bindPasswordToggle(modal);
     modal.querySelector("#qp-weak-pw-later").addEventListener("click", function () { closeWeakPasswordModal(true); });
     modal.querySelector("#qp-weak-pw-save").addEventListener("click", submitWeakPasswordChange);
     modal.addEventListener("click", function (ev) {
-      if (ev.target === modal) closeWeakPasswordModal(true);
+      if (ev.target === modal && !(state.session && state.session.passwordChangeRequired)) {
+        closeWeakPasswordModal(true);
+      }
     });
     return modal;
   }
 
   function closeWeakPasswordModal(later) {
+    if (state.session && state.session.passwordChangeRequired) return;
     var modal = document.getElementById("qp-weak-pw-modal");
     if (modal) modal.classList.remove("qp-show");
     var err = document.getElementById("qp-weak-pw-error");
@@ -277,16 +313,34 @@
     if (c) c.value = "";
     if (!later) {
       state.pendingWeakPassword = null;
-      if (state.session) state.session.mustChangePassword = false;
+      if (state.session) {
+        state.session.mustChangePassword = false;
+        state.session.passwordChangeRequired = false;
+      }
     }
     hydrate().then(refreshUI);
   }
 
-  function showWeakPasswordModal(currentPassword) {
+  function showWeakPasswordModal(currentPassword, required) {
     state.pendingWeakPassword = currentPassword || null;
+    if (state.session) state.session.passwordChangeRequired = !!required;
     var modal = ensureWeakPasswordModal();
     var err = document.getElementById("qp-weak-pw-error");
     if (err) err.textContent = "";
+    var title = modal.querySelector("h3");
+    var hint = document.getElementById("qp-weak-pw-hint");
+    var laterBtn = document.getElementById("qp-weak-pw-later");
+    if (required) {
+      if (title) title.textContent = "Defina sua nova senha";
+      if (hint) hint.textContent = "Por segurança, você precisa criar uma senha pessoal no primeiro acesso antes de usar o portal.";
+      if (laterBtn) laterBtn.style.display = "none";
+      modal.classList.add("qp-required");
+    } else {
+      if (title) title.textContent = "Atualize sua senha";
+      if (hint) hint.textContent = "Sua senha atual é fraca. Crie uma senha mais segura para continuar usando o portal com segurança.";
+      if (laterBtn) laterBtn.style.display = "";
+      modal.classList.remove("qp-required");
+    }
     modal.classList.add("qp-show");
     setTimeout(function () {
       var input = document.getElementById("qp-weak-pw-new");
@@ -295,7 +349,12 @@
   }
 
   function submitWeakPasswordChange() {
-    if (!state.session || !state.pendingWeakPassword) {
+    if (!state.session) {
+      closeWeakPasswordModal();
+      return;
+    }
+    var required = !!(state.session && state.session.passwordChangeRequired);
+    if (!required && !state.pendingWeakPassword) {
       closeWeakPasswordModal();
       return;
     }
@@ -316,7 +375,7 @@
       err.textContent = passwordRequirementsText();
       return;
     }
-    if (nova === state.pendingWeakPassword) {
+    if (state.pendingWeakPassword && nova === state.pendingWeakPassword) {
       err.textContent = "A nova senha deve ser diferente da atual.";
       return;
     }
@@ -325,13 +384,17 @@
     api({
       action: "changePassword",
       email: state.session.email,
-      senhaAtual: state.pendingWeakPassword,
-      novaSenha: nova
+      senhaAtual: state.pendingWeakPassword || "",
+      novaSenha: nova,
+      forced: required
     })
       .then(function (res) {
         if (res && res.ok) {
           state.pendingWeakPassword = null;
-          if (state.session) state.session.mustChangePassword = false;
+          if (state.session) {
+            state.session.mustChangePassword = false;
+            state.session.passwordChangeRequired = false;
+          }
           var modal = document.getElementById("qp-weak-pw-modal");
           if (modal) modal.classList.remove("qp-show");
           alert("Senha atualizada com sucesso!");
@@ -372,12 +435,18 @@
               res.acessoBackoffice != null ? res.acessoBackoffice : res.acessoAcademia
             ),
             token: res.sessionToken || "",
-            mustChangePassword: !!res.weakPassword
+            mustChangePassword: !!(res.mustChangePassword || res.weakPassword),
+            passwordChangeRequired: !!res.mustChangePassword
           });
           state.accessResolved = true;
           showOverlay(false);
+          if (res.mustChangePassword) {
+            showWeakPasswordModal(senha, true);
+            refreshUI();
+            return;
+          }
           if (res.weakPassword) {
-            showWeakPasswordModal(senha);
+            showWeakPasswordModal(senha, false);
             refreshUI();
             return;
           }
@@ -434,6 +503,10 @@
           state.session.acessoBackoffice = parseBackofficeAccess(
             res.acessoBackoffice != null ? res.acessoBackoffice : res.acessoAcademia
           );
+          if (res.mustChangePassword) {
+            state.session.mustChangePassword = true;
+            state.session.passwordChangeRequired = true;
+          }
           state.accessResolved = true;
           recompute();
           return true;
@@ -692,9 +765,23 @@
   }
 
   function ensureWeakPasswordBanner() {
-    if (!state.session || !state.session.mustChangePassword || !state.pendingWeakPassword) {
+    if (!state.session || !state.session.mustChangePassword) {
       var old = document.getElementById("qp-weak-pw-banner");
       if (old) old.remove();
+      return;
+    }
+    if (state.session.passwordChangeRequired) {
+      var oldRequired = document.getElementById("qp-weak-pw-banner");
+      if (oldRequired) oldRequired.remove();
+      if (!document.getElementById("qp-weak-pw-modal") ||
+          !document.getElementById("qp-weak-pw-modal").classList.contains("qp-show")) {
+        showWeakPasswordModal(state.pendingWeakPassword, true);
+      }
+      return;
+    }
+    if (!state.pendingWeakPassword) {
+      var old2 = document.getElementById("qp-weak-pw-banner");
+      if (old2) old2.remove();
       return;
     }
     if (document.getElementById("qp-weak-pw-modal") &&
@@ -1568,7 +1655,7 @@
     sec.className = "qp-section qp-admin-users";
     sec.innerHTML =
       '<h3 class="qp-section-title">Gerenciar atendentes</h3>' +
-      '<p class="qp-hint">Cadastre, edite, bloqueie ou remova usuários. Toda alteração pede sua senha de administrador.</p>' +
+      '<p class="qp-hint">Cadastre, edite, bloqueie ou remova usuários. Toda alteração pede sua senha de administrador. O atendente precisará definir uma nova senha no primeiro acesso.</p>' +
       '<div id="qp-users-list"><p class="qp-empty">Carregando usuários…</p></div>' +
       '<div class="qp-form qp-admin-user-form">' +
       '  <h4 id="qp-user-form-title">Novo atendente</h4>' +
@@ -1578,7 +1665,7 @@
       '  <label for="qp-user-email">E-mail</label>' +
       '  <input id="qp-user-email" type="email" placeholder="email@empresa.com">' +
       '  <label for="qp-user-senha">Senha inicial</label>' +
-      '  <input id="qp-user-senha" type="password" placeholder="Mín. 8 caracteres, 1 maiúscula, 1 número, 1 símbolo">' +
+      passwordFieldHtml("qp-user-senha", 'placeholder="Mín. 8 caracteres, 1 maiúscula, 1 número, 1 símbolo"') +
       '  <div class="qp-row">' +
       '    <label for="qp-user-perfil">Perfil</label>' +
       '    <select id="qp-user-perfil"><option value="Atendente">Atendente</option><option value="Backoffice">Backoffice</option><option value="Administrador">Administrador</option></select>' +
@@ -1592,6 +1679,7 @@
       '</div>';
     sec.querySelector("#qp-user-save").addEventListener("click", saveAdminUser);
     sec.querySelector("#qp-user-cancel-edit").addEventListener("click", resetAdminUserForm);
+    bindPasswordToggle(sec);
     return sec;
   }
 

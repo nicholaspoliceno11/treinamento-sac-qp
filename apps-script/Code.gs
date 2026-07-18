@@ -10,6 +10,7 @@
  * (a ORDEM não importa — as colunas são detectadas pelo nome):
  *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
  *   (a coluna "SENHA TEMPORARIA" é opcional)
+ *   (a coluna "TROCAR SENHA" — SIM/NAO — força troca no primeiro acesso após cadastro)
  *   (a coluna "ACESSO BACKOFFICE" na aba Login Treinamento — use SIM ou NÃO;
  *    a coluna legada "ACESSO ACADEMIA" também é aceita)
  *   OU uma aba separada "ACESSO BACKOFFICE" (ou "ACESSO ACADEMIA") com colunas NOME + ACESSO (Sim/Não)
@@ -140,7 +141,8 @@ function loginCols(headers) {
     perfil: find("PERFIL"),
     andamento: find("ANDAMENTO"),
     acessoBackoffice: find("ACESSO BACKOFFICE", "ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "TOPICO ACADEMIA"),
-    bloqueado: find("BLOQUEADO", "BLOQUEADO ACESSO", "ACESSO BLOQUEADO")
+    bloqueado: find("BLOQUEADO", "BLOQUEADO ACESSO", "ACESSO BLOQUEADO"),
+    trocaSenha: find("TROCAR SENHA", "TROCAR SENHA NO LOGIN", "ALTERAR SENHA")
   };
 }
 
@@ -524,7 +526,8 @@ function handleLogin(req) {
   clearLoginAttempts(email);
   migratePasswordsOnLogin(u, prov);
 
-  var weakPassword = !isStrongPassword(prov);
+  var forceChange = mustChangePasswordUser(u);
+  var weakPassword = !forceChange && !isStrongPassword(prov);
   var userEmail = cell(u, "email");
   return {
     ok: true,
@@ -533,6 +536,7 @@ function handleLogin(req) {
     email: userEmail,
     perfil: cell(u, "perfil") || "Atendente",
     acessoBackoffice: !!hasBackofficeAccess(u),
+    mustChangePassword: forceChange,
     weakPassword: weakPassword
   };
 }
@@ -553,7 +557,8 @@ function handleGetState(req) {
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
     acessoBackoffice: !!hasBackofficeAccess(u),
-    concluidos: completedTopics(cell(u, "email"))
+    concluidos: completedTopics(cell(u, "email")),
+    mustChangePassword: mustChangePasswordUser(u)
   };
 }
 
@@ -1320,14 +1325,41 @@ function ensureSheet(name, headers) {
 
 /* ---------------- Administração de usuários ---------------- */
 function ensureBloqueadoColumn() {
+  return ensureUserAdminColumns();
+}
+
+function ensureUserAdminColumns() {
   var sh = loginSheet();
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
   var cols = loginCols(headers);
-  if (cols.bloqueado >= 0) return cols;
-  var newCol = lastCol + 1;
-  sh.getRange(1, newCol).setValue("BLOQUEADO");
-  return loginCols(sh.getRange(1, 1, 1, newCol).getValues()[0]);
+  if (cols.bloqueado < 0) {
+    lastCol += 1;
+    sh.getRange(1, lastCol).setValue("BLOQUEADO");
+    headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+    cols = loginCols(headers);
+  }
+  if (cols.trocaSenha < 0) {
+    lastCol = Math.max(sh.getLastColumn(), 1) + 1;
+    sh.getRange(1, lastCol).setValue("TROCAR SENHA");
+    cols = loginCols(sh.getRange(1, 1, 1, lastCol).getValues()[0]);
+  }
+  return cols;
+}
+
+function trocaSenhaVal(u) {
+  if (!u || u.cols.trocaSenha < 0) return "";
+  return loginSheet().getRange(u.row, u.cols.trocaSenha + 1).getDisplayValue();
+}
+
+function mustChangePasswordUser(u) {
+  if (!u || u.cols.trocaSenha < 0) return false;
+  return isSim(trocaSenhaVal(u));
+}
+
+function setTrocaSenha(u, value) {
+  if (!u || u.cols.trocaSenha < 0) return;
+  loginSheet().getRange(u.row, u.cols.trocaSenha + 1).setValue(value ? "SIM" : "NAO");
 }
 
 function bloqueadoVal(u) {
@@ -1378,7 +1410,7 @@ function revokeSessionsForEmail(email) {
 
 function maxLoginColIndex(cols) {
   var max = 0;
-  var keys = ["nome", "email", "senha", "senhaTemp", "perfil", "andamento", "acessoBackoffice", "bloqueado"];
+  var keys = ["nome", "email", "senha", "senhaTemp", "perfil", "andamento", "acessoBackoffice", "bloqueado", "trocaSenha"];
   for (var i = 0; i < keys.length; i++) {
     if (cols[keys[i]] > max) max = cols[keys[i]];
   }
@@ -1396,6 +1428,7 @@ function newLoginRow(cols, data) {
   if (cols.andamento >= 0) row[cols.andamento] = norm(data.andamento) || "0%";
   if (cols.acessoBackoffice >= 0) row[cols.acessoBackoffice] = data.acessoBackoffice ? "SIM" : "NAO";
   if (cols.bloqueado >= 0) row[cols.bloqueado] = data.bloqueado ? "SIM" : "NAO";
+  if (cols.trocaSenha >= 0) row[cols.trocaSenha] = data.trocaSenha ? "SIM" : "NAO";
   return row;
 }
 
@@ -1445,7 +1478,7 @@ function handleCreateUser(req) {
   }
   if (findUser(email)) return { ok: false, message: "E-mail já cadastrado" };
 
-  var cols = ensureBloqueadoColumn();
+  var cols = ensureUserAdminColumns();
   loginSheet().appendRow(newLoginRow(cols, {
     nome: nome,
     email: email,
@@ -1453,7 +1486,8 @@ function handleCreateUser(req) {
     perfil: normPerfil(user.perfil),
     andamento: "0%",
     acessoBackoffice: !!user.acessoBackoffice,
-    bloqueado: !!user.bloqueado
+    bloqueado: !!user.bloqueado,
+    trocaSenha: true
   }));
   return { ok: true };
 }
@@ -1470,7 +1504,7 @@ function handleUpdateUser(req) {
   var adminEmail = cell(auth.user, "email").toLowerCase();
   var changes = req.changes || {};
   var sh = loginSheet();
-  var cols = ensureBloqueadoColumn();
+  var cols = ensureUserAdminColumns();
   u.cols = cols;
 
   if (changes.nome != null && cols.nome >= 0) {
@@ -1501,6 +1535,7 @@ function handleUpdateUser(req) {
       }
       if (cols.senha >= 0) sh.getRange(u.row, cols.senha + 1).setValue(hashPassword(novaSenha));
       if (cols.senhaTemp >= 0) sh.getRange(u.row, cols.senhaTemp + 1).setValue("");
+      setTrocaSenha(u, true);
       revokeSessionsForEmail(targetEmail);
     }
   }
@@ -1531,24 +1566,40 @@ function handleChangePassword(req) {
   if (!auth.ok) return auth;
   var senhaAtual = normPw(req.senhaAtual);
   var novaSenha = normPw(req.novaSenha);
-  if (!senhaAtual || !novaSenha) {
-    return { ok: false, message: "Informe a senha atual e a nova senha." };
-  }
-  if (!verifyUserPassword(auth.user, senhaAtual)) {
-    return { ok: false, error: "senha_atual" };
-  }
-  if (!isStrongPassword(novaSenha)) {
-    return { ok: false, error: "senha_fraca", message: passwordRequirementsMessage() };
-  }
-  if (senhaAtual === novaSenha) {
-    return { ok: false, message: "A nova senha deve ser diferente da atual." };
+  if (!novaSenha) {
+    return { ok: false, message: "Informe a nova senha." };
   }
 
   var u = findUser(cell(auth.user, "email"));
   if (!u) return { ok: false, error: "auth" };
+  var cols = ensureUserAdminColumns();
+  u.cols = cols;
+  var forcedChange = mustChangePasswordUser(u);
+
+  if (!forcedChange) {
+    if (!senhaAtual) {
+      return { ok: false, message: "Informe a senha atual e a nova senha." };
+    }
+    if (!verifyUserPassword(u, senhaAtual)) {
+      return { ok: false, error: "senha_atual" };
+    }
+  } else if (senhaAtual && !verifyUserPassword(u, senhaAtual)) {
+    return { ok: false, error: "senha_atual" };
+  }
+
+  if (!isStrongPassword(novaSenha)) {
+    return { ok: false, error: "senha_fraca", message: passwordRequirementsMessage() };
+  }
+  if (senhaAtual && senhaAtual === novaSenha) {
+    return { ok: false, message: "A nova senha deve ser diferente da atual." };
+  }
+  if (forcedChange && verifyUserPassword(u, novaSenha)) {
+    return { ok: false, message: "A nova senha deve ser diferente da senha temporária." };
+  }
+
   var sh = loginSheet();
-  var cols = u.cols;
   if (cols.senha >= 0) sh.getRange(u.row, cols.senha + 1).setValue(hashPassword(novaSenha));
   if (cols.senhaTemp >= 0) sh.getRange(u.row, cols.senhaTemp + 1).setValue("");
+  setTrocaSenha(u, false);
   return { ok: true };
 }
