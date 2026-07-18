@@ -68,6 +68,7 @@ function doPost(e) {
       case "createUser":      return json(handleCreateUser(req));
       case "updateUser":      return json(handleUpdateUser(req));
       case "deleteUser":      return json(handleDeleteUser(req));
+      case "changePassword":  return json(handleChangePassword(req));
       case "debug":       return json(handleDebug(req));
       default:            return json({ ok: false, message: "Ação desconhecida" });
     }
@@ -278,9 +279,23 @@ function verifyStoredPassword(stored, plain) {
 function isStrongPassword(plain) {
   var p = normPw(plain);
   if (p.length < 8) return false;
-  if (!/[A-Za-z]/.test(p)) return false;
+  if (!/[A-Z]/.test(p)) return false;
   if (!/[0-9]/.test(p)) return false;
+  if (!/[^A-Za-z0-9]/.test(p)) return false;
   return true;
+}
+
+function passwordRequirementsMessage() {
+  return "A senha deve ter no mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo.";
+}
+
+function verifyUserPassword(u, plain) {
+  var prov = normPw(plain);
+  if (!prov) return false;
+  var s1 = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]) : "";
+  var s2 = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]) : "";
+  return (s1 !== "" && verifyStoredPassword(s1, prov)) ||
+         (s2 !== "" && verifyStoredPassword(s2, prov));
 }
 
 function migratePasswordCell(u, colKey, plain) {
@@ -902,12 +917,7 @@ function normPerfil(perfil) {
 }
 
 function verifyAdminPassword(u, senha) {
-  var prov = normPw(senha);
-  if (!prov) return false;
-  var s1 = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]) : "";
-  var s2 = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]) : "";
-  return (s1 !== "" && verifyStoredPassword(s1, prov)) ||
-         (s2 !== "" && verifyStoredPassword(s2, prov));
+  return verifyUserPassword(u, senha);
 }
 
 function requireAdmin(req) {
@@ -1000,7 +1010,7 @@ function handleCreateUser(req) {
   if (!nome || !email) return { ok: false, message: "Nome e e-mail são obrigatórios" };
   if (!senha) return { ok: false, message: "Informe uma senha inicial" };
   if (!isStrongPassword(senha)) {
-    return { ok: false, message: "Senha deve ter 8+ caracteres, letras e números" };
+    return { ok: false, message: passwordRequirementsMessage() };
   }
   if (findUser(email)) return { ok: false, message: "E-mail já cadastrado" };
 
@@ -1056,7 +1066,7 @@ function handleUpdateUser(req) {
     var novaSenha = normPw(changes.senha);
     if (novaSenha) {
       if (!isStrongPassword(novaSenha)) {
-        return { ok: false, message: "Senha deve ter 8+ caracteres, letras e números" };
+        return { ok: false, message: passwordRequirementsMessage() };
       }
       if (cols.senha >= 0) sh.getRange(u.row, cols.senha + 1).setValue(hashPassword(novaSenha));
       if (cols.senhaTemp >= 0) sh.getRange(u.row, cols.senhaTemp + 1).setValue("");
@@ -1082,5 +1092,32 @@ function handleDeleteUser(req) {
   loginSheet().deleteRow(u.row);
   revokeSessionsForEmail(targetEmail);
   clearLoginAttempts(targetEmail);
+  return { ok: true };
+}
+
+function handleChangePassword(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var senhaAtual = normPw(req.senhaAtual);
+  var novaSenha = normPw(req.novaSenha);
+  if (!senhaAtual || !novaSenha) {
+    return { ok: false, message: "Informe a senha atual e a nova senha." };
+  }
+  if (!verifyUserPassword(auth.user, senhaAtual)) {
+    return { ok: false, error: "senha_atual" };
+  }
+  if (!isStrongPassword(novaSenha)) {
+    return { ok: false, error: "senha_fraca", message: passwordRequirementsMessage() };
+  }
+  if (senhaAtual === novaSenha) {
+    return { ok: false, message: "A nova senha deve ser diferente da atual." };
+  }
+
+  var u = findUser(cell(auth.user, "email"));
+  if (!u) return { ok: false, error: "auth" };
+  var sh = loginSheet();
+  var cols = u.cols;
+  if (cols.senha >= 0) sh.getRange(u.row, cols.senha + 1).setValue(hashPassword(novaSenha));
+  if (cols.senhaTemp >= 0) sh.getRange(u.row, cols.senhaTemp + 1).setValue("");
   return { ok: true };
 }

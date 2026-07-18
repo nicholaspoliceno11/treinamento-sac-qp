@@ -23,7 +23,8 @@
     session: null,        // { nome, email, perfil, acessoBackoffice, token }
     concluidos: [],       // ["onboarding", ...]
     percent: 0,
-    accessResolved: false // true após login/hydrate confirmarem acesso na API
+    accessResolved: false, // true após login/hydrate confirmarem acesso na API
+    pendingWeakPassword: null // senha usada no login (para troca obrigatória opcional)
   };
 
   // -------------------------------------------------- utilidades
@@ -137,6 +138,7 @@
     state.concluidos = [];
     state.percent = 0;
     state.accessResolved = false;
+    state.pendingWeakPassword = null;
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
   function parseBackofficeAccess(val) {
@@ -189,6 +191,133 @@
     if (!text) el.className = "qp-login-msg";
   }
 
+  function passwordRequirementsText() {
+    return "Mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo.";
+  }
+
+  function isStrongPasswordClient(pw) {
+    pw = String(pw || "");
+    if (pw.length < 8) return false;
+    if (!/[A-Z]/.test(pw)) return false;
+    if (!/[0-9]/.test(pw)) return false;
+    if (!/[^A-Za-z0-9]/.test(pw)) return false;
+    return true;
+  }
+
+  function ensureWeakPasswordModal() {
+    var modal = document.getElementById("qp-weak-pw-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "qp-weak-pw-modal";
+    modal.className = "qp-modal";
+    modal.innerHTML =
+      '<div class="qp-modal-card qp-weak-pw-card">' +
+      '  <h3>Atualize sua senha</h3>' +
+      '  <p class="qp-hint">Sua senha atual é fraca. Crie uma senha mais segura para continuar usando o portal com segurança.</p>' +
+      '  <ul class="qp-pw-rules">' +
+      '    <li>Mínimo de 8 caracteres</li>' +
+      '    <li>Pelo menos 1 letra maiúscula</li>' +
+      '    <li>Pelo menos 1 número</li>' +
+      '    <li>Pelo menos 1 símbolo (ex.: ! @ # $)</li>' +
+      '  </ul>' +
+      '  <label for="qp-weak-pw-new">Nova senha</label>' +
+      '  <input id="qp-weak-pw-new" type="password" autocomplete="new-password" placeholder="Digite a nova senha">' +
+      '  <label for="qp-weak-pw-confirm">Confirmar nova senha</label>' +
+      '  <input id="qp-weak-pw-confirm" type="password" autocomplete="new-password" placeholder="Repita a nova senha">' +
+      '  <p class="qp-admin-pw-error" id="qp-weak-pw-error"></p>' +
+      '  <div class="qp-modal-actions">' +
+      '    <button type="button" class="qp-btn qp-btn-ghost" id="qp-weak-pw-later">Fazer depois</button>' +
+      '    <button type="button" class="qp-btn qp-btn-primary" id="qp-weak-pw-save">Salvar nova senha</button>' +
+      '  </div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.querySelector("#qp-weak-pw-later").addEventListener("click", closeWeakPasswordModal);
+    modal.querySelector("#qp-weak-pw-save").addEventListener("click", submitWeakPasswordChange);
+    modal.addEventListener("click", function (ev) {
+      if (ev.target === modal) closeWeakPasswordModal();
+    });
+    return modal;
+  }
+
+  function closeWeakPasswordModal() {
+    var modal = document.getElementById("qp-weak-pw-modal");
+    if (modal) modal.classList.remove("qp-show");
+    var err = document.getElementById("qp-weak-pw-error");
+    if (err) err.textContent = "";
+    var n = document.getElementById("qp-weak-pw-new");
+    var c = document.getElementById("qp-weak-pw-confirm");
+    if (n) n.value = "";
+    if (c) c.value = "";
+    state.pendingWeakPassword = null;
+    hydrate().then(refreshUI);
+  }
+
+  function showWeakPasswordModal(currentPassword) {
+    state.pendingWeakPassword = currentPassword || null;
+    var modal = ensureWeakPasswordModal();
+    var err = document.getElementById("qp-weak-pw-error");
+    if (err) err.textContent = "";
+    modal.classList.add("qp-show");
+    setTimeout(function () {
+      var input = document.getElementById("qp-weak-pw-new");
+      if (input) input.focus();
+    }, 50);
+  }
+
+  function submitWeakPasswordChange() {
+    if (!state.session || !state.pendingWeakPassword) {
+      closeWeakPasswordModal();
+      return;
+    }
+    var nova = document.getElementById("qp-weak-pw-new").value || "";
+    var conf = document.getElementById("qp-weak-pw-confirm").value || "";
+    var err = document.getElementById("qp-weak-pw-error");
+    var btn = document.getElementById("qp-weak-pw-save");
+
+    if (!nova || !conf) {
+      err.textContent = "Preencha e confirme a nova senha.";
+      return;
+    }
+    if (nova !== conf) {
+      err.textContent = "A confirmação não confere com a nova senha.";
+      return;
+    }
+    if (!isStrongPasswordClient(nova)) {
+      err.textContent = passwordRequirementsText();
+      return;
+    }
+    if (nova === state.pendingWeakPassword) {
+      err.textContent = "A nova senha deve ser diferente da atual.";
+      return;
+    }
+
+    btn.disabled = true;
+    api({
+      action: "changePassword",
+      email: state.session.email,
+      senhaAtual: state.pendingWeakPassword,
+      novaSenha: nova
+    })
+      .then(function (res) {
+        if (res && res.ok) {
+          state.pendingWeakPassword = null;
+          var modal = document.getElementById("qp-weak-pw-modal");
+          if (modal) modal.classList.remove("qp-show");
+          alert("Senha atualizada com sucesso!");
+          return hydrate().then(refreshUI);
+        }
+        if (res && res.error === "senha_atual") {
+          err.textContent = "Não foi possível validar a senha atual. Faça login novamente.";
+        } else if (res && res.error === "senha_fraca") {
+          err.textContent = res.message || passwordRequirementsText();
+        } else {
+          err.textContent = (res && res.message) || "Não foi possível atualizar a senha.";
+        }
+      })
+      .catch(function () { err.textContent = "Falha de conexão."; })
+      .then(function () { btn.disabled = false; });
+  }
+
   function onLogin(ev) {
     ev.preventDefault();
     var email = (document.getElementById("qp-email").value || "").trim();
@@ -217,9 +346,9 @@
           showOverlay(false);
           document.getElementById("qp-login-form").reset();
           if (res.weakPassword) {
-            setTimeout(function () {
-              alert("Sua senha é fraca. Peça à gestão uma senha com 8+ caracteres, letras e números.");
-            }, 400);
+            showWeakPasswordModal(senha);
+            refreshUI();
+            return;
           }
           return hydrate().then(refreshUI);
         }
@@ -971,7 +1100,7 @@
       '  <label for="qp-user-email">E-mail</label>' +
       '  <input id="qp-user-email" type="email" placeholder="email@empresa.com">' +
       '  <label for="qp-user-senha">Senha inicial</label>' +
-      '  <input id="qp-user-senha" type="password" placeholder="Mín. 8 caracteres, letras e números">' +
+      '  <input id="qp-user-senha" type="password" placeholder="Mín. 8 caracteres, 1 maiúscula, 1 número, 1 símbolo">' +
       '  <div class="qp-row">' +
       '    <label for="qp-user-perfil">Perfil</label>' +
       '    <select id="qp-user-perfil"><option value="Atendente">Atendente</option><option value="Backoffice">Backoffice</option><option value="Administrador">Administrador</option></select>' +
@@ -1002,7 +1131,7 @@
     document.getElementById("qp-user-cancel-edit").style.display = "none";
     var senhaLbl = document.querySelector('label[for="qp-user-senha"]');
     if (senhaLbl) senhaLbl.textContent = "Senha inicial";
-    document.getElementById("qp-user-senha").placeholder = "Mín. 8 caracteres, letras e números";
+    document.getElementById("qp-user-senha").placeholder = "Mín. 8 caracteres, 1 maiúscula, 1 número, 1 símbolo";
   }
 
   function fillAdminUserForm(user) {

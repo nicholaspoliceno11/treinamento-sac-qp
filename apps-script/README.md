@@ -42,8 +42,8 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
   As senhas são gravadas como **hash SHA-256 com sal** (`sha256$...`). No primeiro login
   com senha em texto puro, o script converte automaticamente. Para migrar todas de uma vez,
   execute `migrateAllPasswordsInSheet` no editor Apps Script.
-- **Senha forte recomendada**: mínimo 8 caracteres, com letras e números. Logins com senha
-  fraca são aceitos, mas o portal avisa o usuário.
+- **Senha forte recomendada**: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo. Logins com senha
+  fraca exibem opção de troca imediata no portal (`changePassword`).
 
 As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes** e **LoginTentativas** são criadas automaticamente.
 
@@ -80,6 +80,7 @@ também exigem `email` correspondente à sessão.
 | `createUser` | email, sessionToken, adminSenha, user `{nome,email,senha,perfil,acessoBackoffice,bloqueado}` | `{ok}` (só admin) |
 | `updateUser` | email, sessionToken, adminSenha, targetEmail, changes `{nome?,perfil?,acessoBackoffice?,bloqueado?,senha?}` | `{ok}` (só admin) |
 | `deleteUser` | email, sessionToken, adminSenha, targetEmail | `{ok}` (só admin) |
+| `changePassword` | email, sessionToken, senhaAtual, novaSenha | `{ok}` ou `{ok:false, error:"senha_atual"\|"senha_fraca"}` |
 
 Usuários bloqueados (`BLOQUEADO = SIM` na planilha) não conseguem fazer login. A coluna `BLOQUEADO` é criada automaticamente na primeira gestão pelo portal.
 

@@ -518,3 +518,12 @@ body.qp-portal-locked #mila-float{ visibility:hidden; }
   gap:10px;
   margin-top:18px;
 }
+
+.qp-weak-pw-card .qp-pw-rules{
+  margin:0 0 14px 18px;
+  padding:0;
+  color:#5a6472;
+  font-size:.85rem;
+  line-height:1.5;
+}
+.qp-weak-pw-card .qp-pw-rules li{ margin-bottom:4px; }
