@@ -5,6 +5,8 @@
 (function () {
   "use strict";
 
+  var APP_VERSION = "18";
+
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
     { id: "onboarding", titulo: "Onboarding" },
@@ -231,15 +233,15 @@
       '  </div>' +
       '</div>';
     document.body.appendChild(modal);
-    modal.querySelector("#qp-weak-pw-later").addEventListener("click", closeWeakPasswordModal);
+    modal.querySelector("#qp-weak-pw-later").addEventListener("click", function () { closeWeakPasswordModal(true); });
     modal.querySelector("#qp-weak-pw-save").addEventListener("click", submitWeakPasswordChange);
     modal.addEventListener("click", function (ev) {
-      if (ev.target === modal) closeWeakPasswordModal();
+      if (ev.target === modal) closeWeakPasswordModal(true);
     });
     return modal;
   }
 
-  function closeWeakPasswordModal() {
+  function closeWeakPasswordModal(later) {
     var modal = document.getElementById("qp-weak-pw-modal");
     if (modal) modal.classList.remove("qp-show");
     var err = document.getElementById("qp-weak-pw-error");
@@ -248,7 +250,10 @@
     var c = document.getElementById("qp-weak-pw-confirm");
     if (n) n.value = "";
     if (c) c.value = "";
-    state.pendingWeakPassword = null;
+    if (!later) {
+      state.pendingWeakPassword = null;
+      if (state.session) state.session.mustChangePassword = false;
+    }
     hydrate().then(refreshUI);
   }
 
@@ -301,6 +306,7 @@
       .then(function (res) {
         if (res && res.ok) {
           state.pendingWeakPassword = null;
+          if (state.session) state.session.mustChangePassword = false;
           var modal = document.getElementById("qp-weak-pw-modal");
           if (modal) modal.classList.remove("qp-show");
           alert("Senha atualizada com sucesso!");
@@ -340,16 +346,17 @@
             acessoBackoffice: parseBackofficeAccess(
               res.acessoBackoffice != null ? res.acessoBackoffice : res.acessoAcademia
             ),
-            token: res.sessionToken || ""
+            token: res.sessionToken || "",
+            mustChangePassword: !!res.weakPassword
           });
           state.accessResolved = true;
           showOverlay(false);
-          document.getElementById("qp-login-form").reset();
           if (res.weakPassword) {
             showWeakPasswordModal(senha);
             refreshUI();
             return;
           }
+          document.getElementById("qp-login-form").reset();
           return hydrate().then(refreshUI);
         }
         if (res && res.error === "bloqueado") {
@@ -573,7 +580,32 @@
     ensureSidebarAuth();
     refreshProgressUI();
     ensureTopbar();
+    ensureWeakPasswordBanner();
     renderPage();
+  }
+
+  function ensureWeakPasswordBanner() {
+    if (!state.session || !state.session.mustChangePassword || !state.pendingWeakPassword) {
+      var old = document.getElementById("qp-weak-pw-banner");
+      if (old) old.remove();
+      return;
+    }
+    if (document.getElementById("qp-weak-pw-modal") &&
+        document.getElementById("qp-weak-pw-modal").classList.contains("qp-show")) return;
+    var banner = document.getElementById("qp-weak-pw-banner");
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "qp-weak-pw-banner";
+      banner.className = "qp-weak-pw-banner";
+      banner.innerHTML =
+        '<span>Sua senha precisa ser atualizada para maior segurança.</span>' +
+        '<button type="button" class="qp-btn qp-btn-primary" id="qp-weak-pw-banner-btn">Atualizar agora</button>';
+      var mount = document.querySelector("main .content") || document.querySelector(".content");
+      if (mount) mount.insertBefore(banner, mount.firstChild);
+      banner.querySelector("#qp-weak-pw-banner-btn").addEventListener("click", function () {
+        showWeakPasswordModal(state.pendingWeakPassword);
+      });
+    }
   }
 
   function renderPage() {
@@ -1285,6 +1317,9 @@
 
   // -------------------------------------------------- init
   function init() {
+    if (typeof console !== "undefined" && console.info) {
+      console.info("[QP Portal] versão " + APP_VERSION);
+    }
     if (!apiConfigured()) {
       showOverlay(false);
       return;

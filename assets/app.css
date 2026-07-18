@@ -527,3 +527,19 @@ body.qp-portal-locked #mila-float{ visibility:hidden; }
   line-height:1.5;
 }
 .qp-weak-pw-card .qp-pw-rules li{ margin-bottom:4px; }
+
+.qp-weak-pw-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  background:#fff8e6;
+  border:1px solid #f0d78c;
+  border-left:5px solid var(--qp-yellow);
+  border-radius:10px;
+  padding:12px 16px;
+  margin:0 0 16px;
+  font-size:.9rem;
+  color:#5a4b00;
+}
