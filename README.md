@@ -66,11 +66,3 @@ Treinamentos do backoffice.
 </div>
 
 ---
-
-# 🎯 Desafio do Dia
-
-> Um cliente perdeu o embarque por 20 minutos.
->
-> Qual o procedimento correto?
-
----

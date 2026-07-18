@@ -69,6 +69,10 @@ function doPost(e) {
       case "updateUser":      return json(handleUpdateUser(req));
       case "deleteUser":      return json(handleDeleteUser(req));
       case "changePassword":  return json(handleChangePassword(req));
+      case "getInformativos": return json(handleGetInformativos(req));
+      case "addInformativo":  return json(handleAddInformativo(req));
+      case "markInformativoRead": return json(handleMarkInformativoRead(req));
+      case "addInformativoComment": return json(handleAddInformativoComment(req));
       case "debug":       return json(handleDebug(req));
       default:            return json({ ok: false, message: "Ação desconhecida" });
     }
@@ -875,6 +879,145 @@ function handleSubmitDesafioResposta(req) {
     acertou ? "SIM" : "NAO", new Date().toISOString()
   ]);
   return { ok: true, acertou: acertou };
+}
+
+/* ---------------- Informativos (boletim na home) ---------------- */
+var INFORMATIVOS_HEADERS = ["ID", "TITULO", "TEXTO", "AUTOR", "EMAIL", "CRIADO_EM"];
+var INFORMATIVO_LEITURAS_HEADERS = ["ID", "INFO_ID", "EMAIL", "NOME", "PERFIL", "TS"];
+var INFORMATIVO_COMENTARIOS_HEADERS = ["ID", "INFO_ID", "NOME", "EMAIL", "PERFIL", "TEXTO", "TS"];
+
+function informativosSheet() { return ensureSheet("Informativos", INFORMATIVOS_HEADERS); }
+function informativoLeiturasSheet() { return ensureSheet("InformativoLeituras", INFORMATIVO_LEITURAS_HEADERS); }
+function informativoComentariosSheet() { return ensureSheet("InformativoComentarios", INFORMATIVO_COMENTARIOS_HEADERS); }
+
+function listInformativos(userEmail, admin) {
+  var infoData = informativosSheet().getDataRange().getValues();
+  var leiturasData = informativoLeiturasSheet().getDataRange().getValues();
+  var comentariosData = informativoComentariosSheet().getDataRange().getValues();
+  var t = norm(userEmail).toLowerCase();
+  var leiturasByInfo = {};
+  var i, j, k, infoId, id, row, leituras, lido, item;
+
+  for (i = 1; i < leiturasData.length; i++) {
+    infoId = norm(leiturasData[i][1]);
+    if (!leiturasByInfo[infoId]) leiturasByInfo[infoId] = [];
+    leiturasByInfo[infoId].push({
+      nome: norm(leiturasData[i][3]),
+      email: norm(leiturasData[i][2]),
+      perfil: norm(leiturasData[i][4]),
+      ts: norm(leiturasData[i][5])
+    });
+  }
+
+  var comentariosByInfo = {};
+  for (j = 1; j < comentariosData.length; j++) {
+    id = norm(comentariosData[j][1]);
+    if (!comentariosByInfo[id]) comentariosByInfo[id] = [];
+    comentariosByInfo[id].push({
+      nome: norm(comentariosData[j][2]),
+      email: norm(comentariosData[j][3]),
+      perfil: norm(comentariosData[j][4]),
+      texto: norm(comentariosData[j][5]),
+      ts: norm(comentariosData[j][6])
+    });
+  }
+
+  var out = [];
+  for (k = infoData.length - 1; k >= 1; k--) {
+    row = infoData[k];
+    id = norm(row[0]);
+    if (!id) continue;
+    leituras = leiturasByInfo[id] || [];
+    lido = false;
+    for (i = 0; i < leituras.length; i++) {
+      if (norm(leituras[i].email).toLowerCase() === t) { lido = true; break; }
+    }
+    item = {
+      id: id,
+      titulo: norm(row[1]),
+      texto: norm(row[2]),
+      autor: norm(row[3]),
+      criadoEm: norm(row[5]),
+      lido: lido,
+      totalLeituras: leituras.length,
+      comentarios: comentariosByInfo[id] || []
+    };
+    if (admin) item.leituras = leituras;
+    out.push(item);
+  }
+  return out;
+}
+
+function findInformativo(id) {
+  var data = informativosSheet().getDataRange().getValues();
+  var target = norm(id);
+  for (var i = 1; i < data.length; i++) {
+    if (norm(data[i][0]) === target) return true;
+  }
+  return false;
+}
+
+function hasInformativoRead(infoId, email) {
+  var data = informativoLeiturasSheet().getDataRange().getValues();
+  var iid = norm(infoId);
+  var t = norm(email).toLowerCase();
+  for (var i = 1; i < data.length; i++) {
+    if (norm(data[i][1]) === iid && norm(data[i][2]).toLowerCase() === t) return true;
+  }
+  return false;
+}
+
+function handleGetInformativos(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var email = cell(auth.user, "email");
+  var admin = /admin/i.test(cell(auth.user, "perfil"));
+  return { ok: true, informativos: listInformativos(email, admin) };
+}
+
+function handleAddInformativo(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  var titulo = norm(req.titulo);
+  var texto = norm(req.texto);
+  if (!titulo || !texto) return { ok: false, message: "Título e texto são obrigatórios" };
+  var id = "I" + new Date().getTime();
+  informativosSheet().appendRow([
+    id, titulo, texto, cell(auth.user, "nome"), cell(auth.user, "email"),
+    new Date().toISOString()
+  ]);
+  return { ok: true, id: id };
+}
+
+function handleMarkInformativoRead(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var infoId = norm(req.informativoId);
+  if (!infoId) return { ok: false, message: "Informativo inválido" };
+  if (!findInformativo(infoId)) return { ok: false, message: "Informativo não encontrado" };
+  var email = cell(auth.user, "email");
+  if (hasInformativoRead(infoId, email)) return { ok: true, jaLido: true };
+  var id = "L" + new Date().getTime();
+  informativoLeiturasSheet().appendRow([
+    id, infoId, email, cell(auth.user, "nome"), cell(auth.user, "perfil"),
+    new Date().toISOString()
+  ]);
+  return { ok: true };
+}
+
+function handleAddInformativoComment(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var infoId = norm(req.informativoId);
+  var texto = norm(req.texto);
+  if (!infoId || !texto) return { ok: false, message: "Comentário vazio" };
+  if (!findInformativo(infoId)) return { ok: false, message: "Informativo não encontrado" };
+  var id = "C" + new Date().getTime();
+  informativoComentariosSheet().appendRow([
+    id, infoId, cell(auth.user, "nome"), cell(auth.user, "email"),
+    cell(auth.user, "perfil"), texto, new Date().toISOString()
+  ]);
+  return { ok: true, id: id };
 }
 
 function ensureSheet(name, headers) {

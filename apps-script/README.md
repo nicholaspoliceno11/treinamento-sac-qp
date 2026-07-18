@@ -45,7 +45,7 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
 - **Senha forte recomendada**: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo. Logins com senha
   fraca exibem opção de troca imediata no portal (`changePassword`).
 
-As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes** e **LoginTentativas** são criadas automaticamente.
+As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes**, **LoginTentativas**, **Informativos**, **InformativoLeituras** e **InformativoComentarios** são criadas automaticamente.
 
 ## Segurança
 
@@ -81,6 +81,10 @@ também exigem `email` correspondente à sessão.
 | `updateUser` | email, sessionToken, adminSenha, targetEmail, changes `{nome?,perfil?,acessoBackoffice?,bloqueado?,senha?}` | `{ok}` (só admin) |
 | `deleteUser` | email, sessionToken, adminSenha, targetEmail | `{ok}` (só admin) |
 | `changePassword` | email, sessionToken, senhaAtual, novaSenha | `{ok}` ou `{ok:false, error:"senha_atual"\|"senha_fraca"}` |
+| `getInformativos` | email, sessionToken | `{ok, informativos:[...]}` — cada item: `{id, titulo, texto, autor, criadoEm, lido, totalLeituras, comentarios:[...]}`; admin também recebe `leituras:[{nome,email,perfil,ts}]` |
+| `addInformativo` | email, sessionToken, titulo, texto | `{ok, id}` (só admin) |
+| `markInformativoRead` | email, sessionToken, informativoId | `{ok}` ou `{ok, jaLido:true}` — atendentes e backoffice confirmam leitura |
+| `addInformativoComment` | email, sessionToken, informativoId, texto | `{ok, id}` |
 
 Usuários bloqueados (`BLOQUEADO = SIM` na planilha) não conseguem fazer login. A coluna `BLOQUEADO` é criada automaticamente na primeira gestão pelo portal.
 

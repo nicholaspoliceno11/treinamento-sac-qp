@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "18";
+  var APP_VERSION = "19";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -637,7 +637,9 @@
     }
 
     if (topic === "home") {
+      wrap.appendChild(buildInformativosSection());
       section.appendChild(wrap);
+      loadInformativos();
       refreshProgressUI();
       return;
     }
@@ -866,6 +868,179 @@
     btn.disabled = true;
     api({ action: "addComment", email: state.session.email, topic: topic, texto: texto })
       .then(function (res) { if (res && res.ok) { ta.value = ""; loadComments(topic); } else alert((res && res.message) || "Não foi possível comentar."); })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  // -------- Informativos (boletim na home)
+  function canMarkInformativoRead() {
+    return state.session && !isAdmin();
+  }
+
+  function buildInformativosSection() {
+    var sec = document.createElement("div");
+    sec.className = "qp-section qp-informativos";
+    var html =
+      '<h3 class="qp-section-title">📢 Informativos</h3>' +
+      '<p class="qp-hint qp-informativos-intro">Novas regras, atualizações e comunicados da equipe.</p>' +
+      '<div id="qp-informativos-list"><p class="qp-empty">Carregando…</p></div>';
+    if (isAdmin()) {
+      html +=
+        '<div class="qp-form qp-informativos-admin">' +
+        '  <h4>Publicar novo informativo</h4>' +
+        '  <input type="text" id="qp-info-titulo" placeholder="Título do informativo">' +
+        '  <textarea id="qp-info-texto" placeholder="Descreva a nova regra ou atualização…" rows="4"></textarea>' +
+        '  <button class="qp-btn qp-btn-add" id="qp-info-add">Publicar informativo</button>' +
+        '</div>';
+    }
+    sec.innerHTML = html;
+    if (isAdmin()) {
+      sec.querySelector("#qp-info-add").addEventListener("click", addInformativo);
+    }
+    return sec;
+  }
+
+  function loadInformativos() {
+    api({ action: "getInformativos", email: state.session.email })
+      .then(function (res) {
+        if (res && res.ok) renderInformativos(res.informativos || []);
+        else renderInformativos([], (res && res.message) || "Não foi possível carregar os informativos.");
+      })
+      .catch(function () { renderInformativos([], "Falha de conexão."); });
+  }
+
+  function renderInformativoComments(info) {
+    var comments = info.comentarios || [];
+    var html = '<div class="qp-info-comments">';
+    if (!comments.length) {
+      html += '<p class="qp-empty qp-info-comments-empty">Nenhum comentário ainda.</p>';
+    } else {
+      html += comments.map(function (c) {
+        var admin = /admin/i.test(c.perfil || "");
+        return '<div class="qp-comment qp-info-comment">' +
+          '<div class="qp-c-head">' + esc(c.nome || c.email) +
+          '<span class="qp-badge' + (admin ? " qp-admin" : "") + '">' + esc(c.perfil || "") + "</span>" +
+          '<span class="qp-c-time">' + esc(fmtTime(c.ts)) + "</span></div>" +
+          '<div class="qp-c-body">' + esc(c.texto) + "</div></div>";
+      }).join("");
+    }
+    html +=
+      '<div class="qp-form qp-info-comment-form">' +
+      '  <textarea class="qp-info-comment-text" data-info-id="' + esc(info.id) + '" placeholder="Deixe um comentário ou dúvida sobre este informativo…"></textarea>' +
+      '  <button type="button" class="qp-btn qp-btn-add qp-info-comment-add" data-info-id="' + esc(info.id) + '">Comentar</button>' +
+      "</div></div>";
+    return html;
+  }
+
+  function renderInformativoLeituras(info) {
+    var leituras = info.leituras || [];
+    if (!leituras.length) {
+      return '<p class="qp-info-leituras-empty">Ninguém confirmou a leitura ainda.</p>';
+    }
+    return '<ul class="qp-info-leituras-list">' + leituras.map(function (l) {
+      return "<li><strong>" + esc(l.nome || l.email) + "</strong>" +
+        ' <span class="qp-badge">' + esc(l.perfil || "") + "</span>" +
+        ' <span class="qp-c-time">' + esc(fmtTime(l.ts)) + "</span></li>";
+    }).join("") + "</ul>";
+  }
+
+  function renderInformativos(items, errMsg) {
+    var list = document.getElementById("qp-informativos-list");
+    if (!list) return;
+    if (errMsg) { list.innerHTML = '<p class="qp-empty">' + esc(errMsg) + "</p>"; return; }
+    if (!items.length) {
+      list.innerHTML = '<p class="qp-empty">Nenhum informativo publicado ainda.</p>';
+      return;
+    }
+
+    list.innerHTML = items.map(function (info) {
+      var readBlock = "";
+      if (canMarkInformativoRead()) {
+        if (info.lido) {
+          readBlock = '<div class="qp-info-read qp-info-read-done">✓ Você confirmou que leu este informativo</div>';
+        } else {
+          readBlock = '<button type="button" class="qp-btn qp-btn-primary qp-info-read-btn" data-info-id="' + esc(info.id) + '">Li e estou ciente</button>';
+        }
+      }
+
+      var adminBlock = "";
+      if (isAdmin()) {
+        adminBlock =
+          '<div class="qp-info-leituras">' +
+          '  <h5>Confirmações de leitura (' + esc(String(info.totalLeituras || 0)) + ")</h5>" +
+          renderInformativoLeituras(info) +
+          "</div>";
+      } else if (info.totalLeituras > 0) {
+        adminBlock = '<p class="qp-info-read-count">' + esc(String(info.totalLeituras)) + " pessoa(s) já confirmaram a leitura.</p>";
+      }
+
+      return '<article class="qp-informativo" data-info-id="' + esc(info.id) + '">' +
+        '<header class="qp-info-head">' +
+        '  <h4>' + esc(info.titulo || "Informativo") + "</h4>" +
+        '  <div class="qp-meta">Publicado por ' + esc(info.autor || "admin") + " • " + esc(fmtTime(info.criadoEm)) + "</div>" +
+        "</header>" +
+        '<div class="qp-info-body">' + esc(info.texto || "").replace(/\n/g, "<br>") + "</div>" +
+        readBlock +
+        adminBlock +
+        renderInformativoComments(info) +
+        "</article>";
+    }).join("");
+
+    list.querySelectorAll(".qp-info-read-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        markInformativoRead(btn.getAttribute("data-info-id"), btn);
+      });
+    });
+    list.querySelectorAll(".qp-info-comment-add").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var infoId = btn.getAttribute("data-info-id");
+        var ta = list.querySelector('.qp-info-comment-text[data-info-id="' + infoId + '"]');
+        addInformativoComment(infoId, ta, btn);
+      });
+    });
+  }
+
+  function addInformativo() {
+    var titulo = (document.getElementById("qp-info-titulo").value || "").trim();
+    var texto = (document.getElementById("qp-info-texto").value || "").trim();
+    if (!titulo || !texto) { alert("Preencha título e texto do informativo."); return; }
+    var btn = document.getElementById("qp-info-add");
+    btn.disabled = true;
+    api({ action: "addInformativo", email: state.session.email, titulo: titulo, texto: texto })
+      .then(function (res) {
+        if (res && res.ok) {
+          document.getElementById("qp-info-titulo").value = "";
+          document.getElementById("qp-info-texto").value = "";
+          loadInformativos();
+        } else alert((res && res.message) || "Não foi possível publicar.");
+      })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  function markInformativoRead(infoId, btn) {
+    if (!infoId) return;
+    btn.disabled = true;
+    api({ action: "markInformativoRead", email: state.session.email, informativoId: infoId })
+      .then(function (res) {
+        if (res && res.ok) loadInformativos();
+        else alert((res && res.message) || "Não foi possível registrar a leitura.");
+      })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { if (btn) btn.disabled = false; });
+  }
+
+  function addInformativoComment(infoId, ta, btn) {
+    var texto = (ta && ta.value || "").trim();
+    if (!texto) return;
+    btn.disabled = true;
+    api({ action: "addInformativoComment", email: state.session.email, informativoId: infoId, texto: texto })
+      .then(function (res) {
+        if (res && res.ok) {
+          ta.value = "";
+          loadInformativos();
+        } else alert((res && res.message) || "Não foi possível comentar.");
+      })
       .catch(function () { alert("Falha de conexão."); })
       .then(function () { btn.disabled = false; });
   }
