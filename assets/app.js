@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "21";
+  var APP_VERSION = "22";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -28,6 +28,12 @@
     accessResolved: false, // true após login/hydrate confirmarem acesso na API
     pendingWeakPassword: null // senha usada no login (para troca obrigatória opcional)
   };
+  var MILA_SUGESTOES_PADRAO = [
+    "Como funciona o reembolso por PIX?",
+    "Qual o prazo para cancelamento?",
+    "O que fazer se o cliente perder o embarque?",
+    "Como consultar uma reserva no CMS?"
+  ];
   var milaChatOpen = false;
   var milaGreeted = false;
 
@@ -1679,8 +1685,8 @@
       '</div>' +
       '<div class="qp-mila-messages" id="qp-mila-messages"></div>' +
       '<div class="qp-mila-input-row">' +
-      '  <textarea id="qp-mila-input" rows="2" placeholder="Digite sua dúvida…"></textarea>' +
-      '  <button type="button" class="qp-btn qp-btn-primary" id="qp-mila-send">Enviar</button>' +
+      '  <textarea id="qp-mila-input" rows="2" placeholder="Digite sua dúvida aqui…"></textarea>' +
+      '  <button type="button" class="qp-btn qp-btn-add qp-mila-send-btn" id="qp-mila-send">Enviar</button>' +
       '</div>';
     document.body.appendChild(panel);
 
@@ -1728,9 +1734,20 @@
     if (floatBtn) floatBtn.classList.add("qp-mila-open");
     if (!milaGreeted) {
       milaGreeted = true;
-      appendMilaMessage("mila",
-        "Olá" + (state.session.nome ? ", " + state.session.nome.split(" ")[0] : "") +
-        "! Eu sou a Mila 👋\n\nSou sua agente de treinamento virtual. Pergunte sobre procedimentos, regras ou o portal que eu te ajudo com base na nossa base de conhecimento!");
+      var primeiroNome = (state.session.nome || "").split(" ")[0];
+      var greet =
+        "Olá" + (primeiroNome ? ", " + primeiroNome : "") + "! Eu sou a Mila 👋\n\n" +
+        "Sou sua agente de treinamento virtual. Toque em uma sugestão abaixo ou digite sua dúvida no campo embaixo.";
+      api({ action: "getMilaSugestoes", email: state.session.email })
+        .then(function (res) {
+          var sugs = (res && res.ok && res.sugestoes && res.sugestoes.length)
+            ? res.sugestoes
+            : MILA_SUGESTOES_PADRAO;
+          appendMilaMessage("mila", greet, { sugestoes: sugs });
+        })
+        .catch(function () {
+          appendMilaMessage("mila", greet, { sugestoes: MILA_SUGESTOES_PADRAO });
+        });
     }
     var input = document.getElementById("qp-mila-input");
     if (input) input.focus();
@@ -1754,7 +1771,7 @@
     el.className = "qp-mila-msg qp-mila-msg-" + (role === "user" ? "user" : "mila");
     var body = '<div class="qp-mila-msg-body">' + esc(text).replace(/\n/g, "<br>") + "</div>";
     if (extras && extras.sugestoes && extras.sugestoes.length) {
-      body += '<div class="qp-mila-sugestoes">' + extras.sugestoes.map(function (s) {
+      body += '<div class="qp-mila-sugestoes-label">Sugestões:</div><div class="qp-mila-sugestoes">' + extras.sugestoes.map(function (s) {
         return '<button type="button" class="qp-mila-sugestao" data-q="' + esc(s) + '">' + esc(s) + "</button>";
       }).join("") + "</div>";
     }

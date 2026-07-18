@@ -62,6 +62,7 @@ function doPost(e) {
       case "addDuvida":   return json(handleAddDuvida(req));
       case "answerDuvida":return json(handleAnswerDuvida(req));
       case "askMila":       return json(handleAskMila(req));
+      case "getMilaSugestoes": return json(handleGetMilaSugestoes(req));
       case "getMilaFaq":    return json(handleGetMilaFaq(req));
       case "addMilaFaq":    return json(handleAddMilaFaq(req));
       case "updateMilaFaq": return json(handleUpdateMilaFaq(req));
@@ -873,6 +874,18 @@ function handleAskMila(req) {
     resposta: "Hmm, não encontrei uma resposta exata para isso na minha base. Tente reformular ou toque em uma sugestão abaixo. Você também pode usar a Central de Dúvidas para falar com a liderança! 🙂",
     sugestoes: suggestions.slice(0, 4).map(function (s) { return s.pergunta; })
   };
+}
+
+function handleGetMilaSugestoes(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var faqs = listMilaFaq(true);
+  var sugestoes = [];
+  var i;
+  for (i = 0; i < faqs.length && sugestoes.length < 6; i++) {
+    sugestoes.push(faqs[i].pergunta);
+  }
+  return { ok: true, sugestoes: sugestoes };
 }
 
 function handleGetMilaFaq(req) {

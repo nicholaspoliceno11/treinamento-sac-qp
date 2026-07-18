@@ -86,6 +86,7 @@ também exigem `email` correspondente à sessão.
 | `markInformativoRead` | email, sessionToken, informativoId | `{ok}` ou `{ok, jaLido:true}` — atendentes e backoffice confirmam leitura |
 | `addInformativoComment` | email, sessionToken, informativoId, texto | `{ok, id}` |
 | `askMila` | email, sessionToken, pergunta | `{ok, resposta, perguntaBase?, score?, semMatch?, sugestoes?}` — busca na base `MilaFAQ` |
+| `getMilaSugestoes` | email, sessionToken | `{ok, sugestoes:[...]}` — até 6 perguntas ativas para exibir no chat |
 | `getMilaFaq` | email, sessionToken | `{ok, faq:[...]}` (só admin) |
 | `addMilaFaq` | email, sessionToken, pergunta, resposta, palavrasChave?, ativo? | `{ok, id}` (só admin) |
 | `updateMilaFaq` | email, sessionToken, id, changes `{pergunta?, resposta?, palavrasChave?, ativo?}` | `{ok}` (só admin) |
