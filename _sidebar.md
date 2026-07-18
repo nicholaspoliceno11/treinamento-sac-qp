@@ -1,4 +1,6 @@
-* [Página Inicial](README.md)
+* Página Inicial
+  * [Meu Progresso](README.md#meu-progresso)
+  * [Trilhas de Aprendizagem](README.md#trilhas-de-aprendizagem)
 
 * Onboarding
   * [Boas-vindas](onboarding.md)

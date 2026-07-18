@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "26";
+  var APP_VERSION = "27";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
