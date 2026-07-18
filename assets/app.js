@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "23";
+  var APP_VERSION = "24";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -1062,7 +1062,7 @@
       var readBlock = "";
       if (canMarkInformativoRead()) {
         if (info.lido) {
-          readBlock = '<div class="qp-info-read qp-info-read-done">✓ Você confirmou que leu este informativo</div>';
+          readBlock = '<div class="qp-info-read qp-info-read-done">Você confirmou que leu este informativo</div>';
         } else {
           readBlock = '<button type="button" class="qp-btn qp-btn-primary qp-info-read-btn" data-info-id="' + esc(info.id) + '">Li e estou ciente</button>';
         }
@@ -1328,7 +1328,7 @@
     }
 
     if (ultima && !ultima.acertou) {
-      html += '<div class="qp-quiz-result qp-quiz-err">❌ Resposta incorreta. Você escolheu <strong>' +
+      html += '<div class="qp-quiz-result qp-quiz-err">Incorreto. Você escolheu <strong>' +
         esc(ultima.escolha) + "</strong>. Tente novamente!</div>";
     }
 

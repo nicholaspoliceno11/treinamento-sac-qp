@@ -1,10 +1,22 @@
 <div class="hero">
 
+<div class="hero-inner">
+
+<div class="hero-content">
+
 # Bem-vindo a Biblioteca da Quero Passagem
 
 Sua jornada de excelência começa aqui.
 
 Aprenda, evolua e torne-se referência em atendimento.
+
+</div>
+
+<div class="hero-logo-wrap">
+<img class="hero-logo" src="assets/logo-qp.png" alt="Quero Passagem">
+</div>
+
+</div>
 
 </div>
 
