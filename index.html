@@ -12,7 +12,7 @@
 <meta http-equiv="Expires" content="0">
 
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-<link rel="stylesheet" href="assets/app.css?v=25">
+<link rel="stylesheet" href="assets/app.css?v=26">
 
 <style>
 
@@ -69,21 +69,22 @@ body{
 /* Tópicos principais do menu — ícone Quero Passagem */
 .sidebar-nav > ul > li > p,
 .sidebar-nav > ul > li > a{
-  display:flex;
-  align-items:center;
-  gap:8px;
+  display:block;
+  position:relative;
   font-weight:600!important;
   font-size:.95rem;
   color:var(--qp-blue)!important;
   margin:12px 0 4px;
-  padding-left:0!important;
+  padding-left:24px!important;
   border-left:none!important;
 }
 
 .sidebar-nav > ul > li > p::before,
 .sidebar-nav > ul > li > a::before{
   content:"";
-  flex-shrink:0;
+  position:absolute;
+  left:0;
+  top:.15em;
   width:16px;
   height:16px;
   background:url("assets/qp-mark.png") center/contain no-repeat;
@@ -94,6 +95,19 @@ body{
   font-weight:inherit!important;
   padding-left:0!important;
   border-left:none!important;
+}
+
+/* Subitens do Docsify dentro de Página Inicial (headings do README) */
+.sidebar-nav > ul > li > p > ul.app-sub-sidebar{
+  display:block;
+  margin:4px 0 6px;
+  padding-left:0;
+}
+
+.sidebar-nav > ul > li > p > ul.app-sub-sidebar li a{
+  padding-left:28px!important;
+  font-weight:400!important;
+  color:#1d1d1f!important;
 }
 
 .sidebar-nav > ul > li > ul{
@@ -424,7 +438,7 @@ Carregando Treinamento Quero Passagem...
   <img src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
 </div>
 
-<script src="assets/config.js?v=25"></script>
+<script src="assets/config.js?v=26"></script>
 
 <script>
 window.$docsify = {
@@ -442,7 +456,7 @@ window.$docsify = {
 }
 </script>
 
-<script src="assets/app.js?v=25"></script>
+<script src="assets/app.js?v=26"></script>
 
 <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
 <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
