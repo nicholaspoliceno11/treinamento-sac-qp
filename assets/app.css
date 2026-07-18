@@ -402,3 +402,119 @@ body.qp-portal-locked #mila-float{ visibility:hidden; }
   font-size:.82rem;
   margin-bottom:18px;
 }
+
+/* administração de usuários */
+.qp-admin-users .qp-admin-user-form{
+  margin-top:24px;
+  border-top:1px dashed #d7dbe0;
+  padding-top:20px;
+}
+.qp-admin-users .qp-admin-user-form h4{
+  margin:0 0 14px;
+  color:var(--qp-blue);
+}
+.qp-admin-users label{
+  display:block;
+  font-size:.82rem;
+  font-weight:600;
+  color:var(--qp-blue);
+  margin:10px 0 6px;
+}
+.qp-admin-users input[type="text"],
+.qp-admin-users input[type="email"],
+.qp-admin-users input[type="password"],
+.qp-admin-users select{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #d7dbe0;
+  border-radius:8px;
+  font-size:.92rem;
+  box-sizing:border-box;
+}
+.qp-users-table-wrap{ overflow-x:auto; margin:12px 0 8px; }
+.qp-users-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.86rem;
+}
+.qp-users-table th,
+.qp-users-table td{
+  padding:10px 12px;
+  border-bottom:1px solid #e8e8ed;
+  text-align:left;
+  vertical-align:middle;
+}
+.qp-users-table th{
+  background:#f5f7fa;
+  color:var(--qp-blue);
+  font-size:.75rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.qp-users-actions{ white-space:nowrap; }
+.qp-user-status{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:.72rem;
+  font-weight:600;
+}
+.qp-user-active{ background:#e8f7ee; color:#1a6b38; }
+.qp-user-blocked{ background:#fdecec; color:#9b1c1c; }
+.qp-btn-danger{
+  background:#fff;
+  color:#b42318;
+  border:1px solid #f5c2c0;
+}
+.qp-btn-danger:hover{ background:#fdecec; }
+
+.qp-modal{
+  position:fixed;
+  inset:0;
+  z-index:100001;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,28,61,.55);
+  padding:20px;
+}
+.qp-modal.qp-show{ display:flex; }
+.qp-modal-card{
+  width:100%;
+  max-width:420px;
+  background:#fff;
+  border-radius:16px;
+  padding:24px;
+  box-shadow:0 20px 50px rgba(0,0,0,.25);
+  border-top:4px solid var(--qp-yellow);
+}
+.qp-modal-card h3{
+  margin:0 0 8px;
+  color:var(--qp-blue);
+}
+.qp-modal-card label{
+  display:block;
+  font-size:.82rem;
+  font-weight:600;
+  color:var(--qp-blue);
+  margin:14px 0 6px;
+}
+.qp-modal-card input{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #d7dbe0;
+  border-radius:8px;
+  box-sizing:border-box;
+}
+.qp-admin-pw-error{
+  min-height:18px;
+  color:#b42318;
+  font-size:.82rem;
+  margin:8px 0 0;
+}
+.qp-modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:18px;
+}

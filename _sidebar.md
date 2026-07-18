@@ -24,3 +24,6 @@
 
 * ❓ Dúvidas
   * [Central de Dúvidas](duvidas.md)
+
+* 👥 Administração
+  * [Gerenciar Atendentes](admin-usuarios.md)

@@ -63,6 +63,10 @@ function doPost(e) {
       case "getDesafio":    return json(handleGetDesafio(req));
       case "addDesafioPergunta": return json(handleAddDesafioPergunta(req));
       case "submitDesafioResposta": return json(handleSubmitDesafioResposta(req));
+      case "listUsers":       return json(handleListUsers(req));
+      case "createUser":      return json(handleCreateUser(req));
+      case "updateUser":      return json(handleUpdateUser(req));
+      case "deleteUser":      return json(handleDeleteUser(req));
       case "debug":       return json(handleDebug(req));
       default:            return json({ ok: false, message: "Ação desconhecida" });
     }
@@ -123,7 +127,8 @@ function loginCols(headers) {
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
     andamento: find("ANDAMENTO"),
-    acessoAcademia: find("ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "TOPICO ACADEMIA")
+    acessoAcademia: find("ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "TOPICO ACADEMIA"),
+    bloqueado: find("BLOQUEADO", "BLOQUEADO ACESSO", "ACESSO BLOQUEADO")
   };
 }
 
@@ -472,6 +477,9 @@ function handleLogin(req) {
   if (!u) {
     recordFailedLogin(email);
     return { ok: false, error: "usuario" };
+  }
+  if (isUserBlocked(u)) {
+    return { ok: false, error: "conta_bloqueada" };
   }
 
   var prov = normPw(req.senha);
@@ -860,4 +868,216 @@ function ensureSheet(name, headers) {
     sh.appendRow(headers);
   }
   return sh;
+}
+
+/* ---------------- Administração de usuários ---------------- */
+function ensureBloqueadoColumn() {
+  var sh = loginSheet();
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var cols = loginCols(headers);
+  if (cols.bloqueado >= 0) return cols;
+  var newCol = lastCol + 1;
+  sh.getRange(1, newCol).setValue("BLOQUEADO");
+  return loginCols(sh.getRange(1, 1, 1, newCol).getValues()[0]);
+}
+
+function bloqueadoVal(u) {
+  if (!u || u.cols.bloqueado < 0) return "";
+  return loginSheet().getRange(u.row, u.cols.bloqueado + 1).getDisplayValue();
+}
+
+function isUserBlocked(u) {
+  if (!u || u.cols.bloqueado < 0) return false;
+  return isSim(bloqueadoVal(u));
+}
+
+function normPerfil(perfil) {
+  var p = stripAccents(norm(perfil)).toLowerCase();
+  if (/admin/.test(p)) return "Administrador";
+  return "Atendente";
+}
+
+function verifyAdminPassword(u, senha) {
+  var prov = normPw(senha);
+  if (!prov) return false;
+  var s1 = u.cols.senha >= 0 ? normPw(u.data[u.cols.senha]) : "";
+  var s2 = u.cols.senhaTemp >= 0 ? normPw(u.data[u.cols.senhaTemp]) : "";
+  return (s1 !== "" && verifyStoredPassword(s1, prov)) ||
+         (s2 !== "" && verifyStoredPassword(s2, prov));
+}
+
+function requireAdmin(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  if (!/admin/i.test(cell(auth.user, "perfil"))) return { ok: false, error: "perfil" };
+  return auth;
+}
+
+function requireAdminWithPassword(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  if (!verifyAdminPassword(auth.user, req.adminSenha)) {
+    return { ok: false, error: "senha_admin" };
+  }
+  return auth;
+}
+
+function revokeSessionsForEmail(email) {
+  var sh = sessionsSheet();
+  var data = sh.getDataRange().getValues();
+  var t = norm(email).toLowerCase();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (norm(data[i][0]).toLowerCase() === t) sh.deleteRow(i + 1);
+  }
+}
+
+function maxLoginColIndex(cols) {
+  var max = 0;
+  var keys = ["nome", "email", "senha", "senhaTemp", "perfil", "andamento", "acessoAcademia", "bloqueado"];
+  for (var i = 0; i < keys.length; i++) {
+    if (cols[keys[i]] > max) max = cols[keys[i]];
+  }
+  return max;
+}
+
+function newLoginRow(cols, data) {
+  var width = maxLoginColIndex(cols) + 1;
+  var row = [];
+  for (var i = 0; i < width; i++) row.push("");
+  if (cols.nome >= 0) row[cols.nome] = norm(data.nome);
+  if (cols.email >= 0) row[cols.email] = norm(data.email);
+  if (cols.senha >= 0) row[cols.senha] = data.senhaHash || "";
+  if (cols.perfil >= 0) row[cols.perfil] = normPerfil(data.perfil);
+  if (cols.andamento >= 0) row[cols.andamento] = norm(data.andamento) || "0%";
+  if (cols.acessoAcademia >= 0) row[cols.acessoAcademia] = data.acessoAcademia ? "SIM" : "NAO";
+  if (cols.bloqueado >= 0) row[cols.bloqueado] = data.bloqueado ? "SIM" : "NAO";
+  return row;
+}
+
+function userPublic(u) {
+  return {
+    email: cell(u, "email"),
+    nome: cell(u, "nome"),
+    perfil: cell(u, "perfil") || "Atendente",
+    acessoAcademia: !!hasAcademiaAccess(u),
+    bloqueado: isUserBlocked(u),
+    andamento: u.cols.andamento >= 0 ? norm(u.data[u.cols.andamento]) : "0%"
+  };
+}
+
+function listAllUsers() {
+  ensureBloqueadoColumn();
+  var ld = loginData();
+  var out = [];
+  for (var i = 1; i < ld.values.length; i++) {
+    var row = ld.values[i];
+    if (!norm(row[ld.cols.email])) continue;
+    out.push(userPublic({ row: i + 1, data: row, cols: ld.cols }));
+  }
+  out.sort(function (a, b) {
+    return String(a.nome).localeCompare(String(b.nome), "pt-BR");
+  });
+  return out;
+}
+
+function handleListUsers(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  return { ok: true, users: listAllUsers() };
+}
+
+function handleCreateUser(req) {
+  var auth = requireAdminWithPassword(req);
+  if (!auth.ok) return auth;
+  var user = req.user || {};
+  var nome = norm(user.nome);
+  var email = norm(user.email);
+  var senha = normPw(user.senha);
+  if (!nome || !email) return { ok: false, message: "Nome e e-mail são obrigatórios" };
+  if (!senha) return { ok: false, message: "Informe uma senha inicial" };
+  if (!isStrongPassword(senha)) {
+    return { ok: false, message: "Senha deve ter 8+ caracteres, letras e números" };
+  }
+  if (findUser(email)) return { ok: false, message: "E-mail já cadastrado" };
+
+  var cols = ensureBloqueadoColumn();
+  loginSheet().appendRow(newLoginRow(cols, {
+    nome: nome,
+    email: email,
+    senhaHash: hashPassword(senha),
+    perfil: normPerfil(user.perfil),
+    andamento: "0%",
+    acessoAcademia: !!user.acessoAcademia,
+    bloqueado: !!user.bloqueado
+  }));
+  return { ok: true };
+}
+
+function handleUpdateUser(req) {
+  var auth = requireAdminWithPassword(req);
+  if (!auth.ok) return auth;
+  var targetEmail = norm(req.targetEmail);
+  if (!targetEmail) return { ok: false, message: "E-mail do usuário não informado" };
+
+  var u = findUser(targetEmail);
+  if (!u) return { ok: false, message: "Usuário não encontrado" };
+
+  var adminEmail = cell(auth.user, "email").toLowerCase();
+  var changes = req.changes || {};
+  var sh = loginSheet();
+  var cols = ensureBloqueadoColumn();
+  u.cols = cols;
+
+  if (changes.nome != null && cols.nome >= 0) {
+    sh.getRange(u.row, cols.nome + 1).setValue(norm(changes.nome));
+  }
+  if (changes.perfil != null && cols.perfil >= 0) {
+    var novoPerfil = normPerfil(changes.perfil);
+    if (targetEmail.toLowerCase() === adminEmail && !/admin/i.test(novoPerfil)) {
+      return { ok: false, message: "Você não pode remover seu próprio perfil de administrador" };
+    }
+    sh.getRange(u.row, cols.perfil + 1).setValue(novoPerfil);
+  }
+  if (changes.acessoAcademia != null && cols.acessoAcademia >= 0) {
+    sh.getRange(u.row, cols.acessoAcademia + 1).setValue(changes.acessoAcademia ? "SIM" : "NAO");
+  }
+  if (changes.bloqueado != null && cols.bloqueado >= 0) {
+    if (targetEmail.toLowerCase() === adminEmail && changes.bloqueado) {
+      return { ok: false, message: "Você não pode bloquear sua própria conta" };
+    }
+    sh.getRange(u.row, cols.bloqueado + 1).setValue(changes.bloqueado ? "SIM" : "NAO");
+    if (changes.bloqueado) revokeSessionsForEmail(targetEmail);
+  }
+  if (changes.senha != null) {
+    var novaSenha = normPw(changes.senha);
+    if (novaSenha) {
+      if (!isStrongPassword(novaSenha)) {
+        return { ok: false, message: "Senha deve ter 8+ caracteres, letras e números" };
+      }
+      if (cols.senha >= 0) sh.getRange(u.row, cols.senha + 1).setValue(hashPassword(novaSenha));
+      if (cols.senhaTemp >= 0) sh.getRange(u.row, cols.senhaTemp + 1).setValue("");
+      revokeSessionsForEmail(targetEmail);
+    }
+  }
+
+  return { ok: true };
+}
+
+function handleDeleteUser(req) {
+  var auth = requireAdminWithPassword(req);
+  if (!auth.ok) return auth;
+  var targetEmail = norm(req.targetEmail);
+  if (!targetEmail) return { ok: false, message: "E-mail do usuário não informado" };
+  if (targetEmail.toLowerCase() === cell(auth.user, "email").toLowerCase()) {
+    return { ok: false, message: "Você não pode excluir sua própria conta" };
+  }
+
+  var u = findUser(targetEmail);
+  if (!u) return { ok: false, message: "Usuário não encontrado" };
+
+  loginSheet().deleteRow(u.row);
+  revokeSessionsForEmail(targetEmail);
+  clearLoginAttempts(targetEmail);
+  return { ok: true };
 }
