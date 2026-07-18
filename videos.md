@@ -1,4 +1,4 @@
-# 🖥️ Backoffice Quero Passagem
+# Backoffice Quero Passagem
 
 ## Treinamentos Disponíveis
 

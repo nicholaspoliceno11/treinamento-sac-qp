@@ -1,8 +1,8 @@
-# ⏱️ Mapa de Prazos: Cancelamento e Reembolso
+# ⏱Mapa de Prazos: Cancelamento e Reembolso
 
-> ⚠️ **Regra de Ouro:** Após o prazo regulamentar, a passagem não pode ser cancelada pelo sistema. A remarcação será feita apenas no guichê da viação (validade de 1 ano) com multa de até 20% do valor da tarifa[cite: 2].
+> **Regra de Ouro:** Após o prazo regulamentar, a passagem não pode ser cancelada pelo sistema. A remarcação será feita apenas no guichê da viação (validade de 1 ano) com multa de até 20% do valor da tarifa[cite: 2].
 
-### 📅 Prazos Limites para Cancelamento via Site/App
+### Prazos Limites para Cancelamento via Site/App
 *   **Passagens Internacionais:** Até **24 horas** antes do embarque[cite: 2].
 *   **Intermunicipais MG:** Até **12 horas** antes do embarque[cite: 2].
 *   **Intermunicipais SP e PA:** Até **8 horas** antes do embarque[cite: 2].
@@ -11,7 +11,7 @@
 
 ---
 
-### 💳 O Relógio de Pagamentos e Reembolsos (Mercado Pago / Paymee)
+### O Relógio de Pagamentos e Reembolsos (Mercado Pago / Paymee)
 
 | Método de Pagamento | Prazo de Compensação | Prazo de Reembolso (Estorno) |
 | :--- | :--- | :--- |

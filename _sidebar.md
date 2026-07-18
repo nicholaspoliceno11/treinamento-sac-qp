@@ -1,30 +1,30 @@
-* 🏠 [Página Inicial](README.md)
+* [Página Inicial](README.md)
 
-* 🚀 Onboarding
+* Onboarding
   * [Boas-vindas](onboarding.md)
 
-* 💬 Atendimento
+* Atendimento
   * [5 Pilares](atendimento.md)
   * [Método 3D](metodo3d.md)
 
-* 💳 Financeiro
+* Financeiro
   * [Prazos e Reembolsos](prazos.md)
 
-* 🚌 Regulamentação
+* Regulamentação
   * [ANTT](antt.md)
 
-* ⚙️ Sistemas
+* Sistemas
   * [CMS](cms.md)
 
-* 🖥️ Backoffice
+* Backoffice
   * [Treinamentos](videos.md)
 
-* 🏆 Gamificação
+* Gamificação
   * [Desafio do Dia](desafio.md)
 
-* ❓ Dúvidas
+* Dúvidas
   * [Central de Dúvidas](duvidas.md)
 
-* 👥 Administração
+* Administração
   * [Gerenciar Atendentes](admin-usuarios.md)
   * [Base da Mila](admin-mila.md)

@@ -871,7 +871,7 @@ function handleAskMila(req) {
   return {
     ok: true,
     semMatch: true,
-    resposta: "Hmm, não encontrei uma resposta exata para isso na minha base. Tente reformular ou toque em uma sugestão abaixo. Você também pode usar a Central de Dúvidas para falar com a liderança! 🙂",
+    resposta: "Não encontrei uma resposta exata para isso na minha base. Tente reformular ou toque em uma sugestão abaixo. Você também pode usar a Central de Dúvidas para falar com a liderança.",
     sugestoes: suggestions.slice(0, 4).map(function (s) { return s.pergunta; })
   };
 }

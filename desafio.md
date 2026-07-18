@@ -1,4 +1,4 @@
-# 🎯 Desafio do Dia
+# Desafio do Dia
 
 Teste seus conhecimentos com perguntas de múltipla escolha criadas pela gestão.
 

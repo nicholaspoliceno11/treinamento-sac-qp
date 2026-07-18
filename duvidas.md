@@ -1,4 +1,4 @@
-# ❓ Central de Dúvidas
+# Central de Dúvidas
 
 Ficou com alguma dúvida sobre regras de cancelamento, escala de frota, emissão de reserva — ou tem um ponto de melhoria? Envie no fórum abaixo.
 

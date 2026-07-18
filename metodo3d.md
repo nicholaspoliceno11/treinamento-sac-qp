@@ -1,18 +1,18 @@
-# 🛡️ Método 3D
+# Método 3D
 
-## 1️⃣ Desarmar
+## 1⃣ Desarmar
 
 Demonstrar empatia.
 
 ---
 
-## 2️⃣ Diagnosticar
+## 2⃣ Diagnosticar
 
 Investigar o problema.
 
 ---
 
-## 3️⃣ Descrever
+## 3⃣ Descrever
 
 Confirmar entendimento.
 

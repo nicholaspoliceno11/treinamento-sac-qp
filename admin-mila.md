@@ -1,4 +1,4 @@
-# 🤖 Base de conhecimento da Mila
+# Base de conhecimento da Mila
 
 Aqui você **cadastra as perguntas e respostas** que a Mila usa no chat flutuante do portal.
 

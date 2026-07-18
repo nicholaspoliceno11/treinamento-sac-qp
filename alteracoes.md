@@ -1,6 +1,6 @@
-# 🔄 Trilha 2: Alterações e Cancelamentos
+# Trilha 2: Alterações e Cancelamentos
 
-## 📅 Prazos Regulamentares para Cancelar ou Remarcar via Site/App
+## Prazos Regulamentares para Cancelar ou Remarcar via Site/App
 
 Os prazos variam de acordo com o tipo de trajeto (Interestadual ou Intermunicipal)[cite: 1]. Se o cliente perder esse prazo, o sistema bloqueia a ação[cite: 1].
 
@@ -10,7 +10,7 @@ Os prazos variam de acordo com o tipo de trajeto (Interestadual ou Intermunicipa
     *   **Minas Gerais (MG):** Até **12 horas** antes do embarque[cite: 1].
     *   **Mato Grosso do Sul (MS):** Até **3 horas** antes do embarque[cite: 1].
 
-## 🚫 Regras Cruciais dos Termos de Uso
+## Regras Cruciais dos Termos de Uso
 
 1. **Taxa de Conveniência/Serviço:** **Não é reembolsável** em casos de cancelamento por iniciativa do cliente, pois o serviço de intermediação da venda foi concluído no momento da emissão[cite: 1].
 2. **Alteração de Itinerário:** O sistema **não permite** trocar a origem ou o destino da passagem[cite: 1]. O cliente deve realizar o cancelamento dentro do prazo e efetuar uma nova compra[cite: 1].

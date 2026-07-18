@@ -1,29 +1,29 @@
-# 💬 Os 5 Pilares do Atendimento
+# Os 5 Pilares do Atendimento
 
-## 🧠 Escuta Ativa
+## Escuta Ativa
 
 Ouvir além das palavras.
 
 ---
 
-## 🤝 Empatia
+## Empatia
 
 Compreender o sentimento do cliente.
 
 ---
 
-## ⚡ Inteligência Emocional
+## Inteligência Emocional
 
 Manter a calma.
 
 ---
 
-## ⏳ Paciência
+## Paciência
 
 Entender antes de responder.
 
 ---
 
-## 🎯 Comunicação Assertiva
+## Comunicação Assertiva
 
 Ser claro e objetivo.

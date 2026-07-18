@@ -1,4 +1,4 @@
-# 🚀 Bem-vindo à Quero Passagem
+# Bem-vindo à Quero Passagem
 
 ## Nossa História
 
@@ -14,18 +14,18 @@ Conectar pessoas aos seus destinos com facilidade e segurança.
 
 ## Nossos Valores
 
-### 🤝 Cliente em Primeiro Lugar
+### Cliente em Primeiro Lugar
 
 Encantar em cada atendimento.
 
-### ⚡ Agilidade
+### Agilidade
 
 Resolver rapidamente.
 
-### 🎯 Excelência
+### Excelência
 
 Buscar melhoria contínua.
 
-### 🚀 Inovação
+### Inovação
 
 Evoluir constantemente.

@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "22";
+  var APP_VERSION = "23";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -557,12 +557,12 @@
         blocked.id = "qp-restricted";
         blocked.className = "qp-restricted";
         blocked.innerHTML =
-          "<h2>🔒 Acesso restrito</h2>" +
+          "<h2>Acesso restrito</h2>" +
           "<p>Esta área é exclusiva para <strong>administradores</strong>.</p>";
         section.insertBefore(blocked, section.firstChild);
       } else {
         blocked.innerHTML =
-          "<h2>🔒 Acesso restrito</h2>" +
+          "<h2>Acesso restrito</h2>" +
           "<p>Esta área é exclusiva para <strong>administradores</strong>.</p>";
       }
       blocked.style.display = "";
@@ -581,7 +581,7 @@
         blocked.id = "qp-restricted";
         blocked.className = "qp-restricted";
         blocked.innerHTML =
-          "<h2>🔒 Acesso restrito</h2>" +
+          "<h2>Acesso restrito</h2>" +
           "<p>Você não tem permissão para acessar o <strong>Backoffice</strong>.</p>" +
           "<p class=\"qp-hint\">Acesso restrito a perfil <em>Backoffice</em> ou coluna <em>ACESSO BACKOFFICE = SIM</em>.</p>";
         section.insertBefore(blocked, section.firstChild);
@@ -915,7 +915,7 @@
     var sec = document.createElement("div");
     sec.className = "qp-section qp-informativos";
     var html =
-      '<h3 class="qp-section-title">📢 Informativos</h3>' +
+      '<h3 class="qp-section-title">Informativos</h3>' +
       '<p class="qp-hint qp-informativos-intro">Novas regras, atualizações e comunicados da equipe.</p>' +
       '<div id="qp-informativos-list"><p class="qp-empty">Carregando…</p></div>';
     if (isAdmin()) {
@@ -1010,7 +1010,7 @@
 
     if (!body) return "";
     return '<div class="qp-info-anexo qp-info-anexo-' + esc(tipo) + '">' +
-      '<div class="qp-info-anexo-label">📎 ' + esc(nome) + "</div>" +
+      '<div class="qp-info-anexo-label">Anexo: ' + esc(nome) + "</div>" +
       body + "</div>";
   }
 
@@ -1241,7 +1241,7 @@
     var sec = document.createElement("div");
     sec.className = "qp-section qp-desafio";
     var html =
-      '<h3 class="qp-section-title">🎯 Desafio do Dia</h3>' +
+      '<h3 class="qp-section-title">Desafio do Dia</h3>' +
       '<div id="qp-desafio-root"><p class="qp-empty">Carregando perguntas…</p></div>';
     if (isAdmin()) {
       html +=
@@ -1323,7 +1323,7 @@
     }
 
     if (ultima && ultima.acertou) {
-      html += '<div class="qp-quiz-result qp-quiz-ok">✅ Parabéns! Você acertou.</div>';
+      html += '<div class="qp-quiz-result qp-quiz-ok">Correto. Parabéns, você acertou.</div>';
       return html + "</div>";
     }
 
@@ -1736,7 +1736,7 @@
       milaGreeted = true;
       var primeiroNome = (state.session.nome || "").split(" ")[0];
       var greet =
-        "Olá" + (primeiroNome ? ", " + primeiroNome : "") + "! Eu sou a Mila 👋\n\n" +
+        "Olá" + (primeiroNome ? ", " + primeiroNome : "") + ". Eu sou a Mila.\n\n" +
         "Sou sua agente de treinamento virtual. Toque em uma sugestão abaixo ou digite sua dúvida no campo embaixo.";
       api({ action: "getMilaSugestoes", email: state.session.email })
         .then(function (res) {
