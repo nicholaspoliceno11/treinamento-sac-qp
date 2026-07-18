@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "19";
+  var APP_VERSION = "20";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -62,6 +62,7 @@
   // Comprime/redimensiona a imagem no navegador e devolve um data URI JPEG
   // pequeno o suficiente para caber numa célula da planilha (limite ~50k chars).
   var IMG_MAX_CHARS = 45000;
+  var INFO_FILE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
   function compressImageFile(file, cb) {
     if (!file) { cb(null, "Selecione uma imagem."); return; }
     if (!/^image\//.test(file.type)) { cb(null, "O arquivo precisa ser uma imagem."); return; }
@@ -90,6 +91,22 @@
         cb(null, "Imagem muito grande mesmo após compressão. Use uma imagem menor.");
       };
       img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function readFileAsBase64(file, cb) {
+    if (!file) { cb(null, null, "Selecione um arquivo."); return; }
+    if (file.size > INFO_FILE_MAX_BYTES) {
+      cb(null, null, "Arquivo muito grande (máx. 20 MB).");
+      return;
+    }
+    var reader = new FileReader();
+    reader.onerror = function () { cb(null, null, "Não foi possível ler o arquivo."); };
+    reader.onload = function () {
+      var dataUrl = String(reader.result || "");
+      var parts = dataUrl.split(",");
+      cb(parts[1] || "", file.type || "", null);
     };
     reader.readAsDataURL(file);
   }
@@ -890,11 +907,48 @@
         '  <h4>Publicar novo informativo</h4>' +
         '  <input type="text" id="qp-info-titulo" placeholder="Título do informativo">' +
         '  <textarea id="qp-info-texto" placeholder="Descreva a nova regra ou atualização…" rows="4"></textarea>' +
+        '  <div class="qp-row">' +
+        '    <label for="qp-info-anexo-tipo">Anexo (opcional)</label>' +
+        '    <select id="qp-info-anexo-tipo">' +
+        '      <option value="">Nenhum</option>' +
+        '      <option value="imagem">Foto (JPG/PNG)</option>' +
+        '      <option value="pdf">PDF</option>' +
+        '      <option value="video">Vídeo (link ou arquivo)</option>' +
+        '    </select>' +
+        '  </div>' +
+        '  <input type="file" id="qp-info-anexo-file" style="display:none">' +
+        '  <input type="text" id="qp-info-anexo-url" placeholder="Cole o link do YouTube ou Vimeo" style="display:none">' +
+        '  <p class="qp-hint" id="qp-info-anexo-hint"></p>' +
         '  <button class="qp-btn qp-btn-add" id="qp-info-add">Publicar informativo</button>' +
         '</div>';
     }
     sec.innerHTML = html;
     if (isAdmin()) {
+      var sel = sec.querySelector("#qp-info-anexo-tipo");
+      var fileInput = sec.querySelector("#qp-info-anexo-file");
+      var urlInput = sec.querySelector("#qp-info-anexo-url");
+      var hint = sec.querySelector("#qp-info-anexo-hint");
+      function syncInfoAnexo() {
+        var tipo = sel.value;
+        fileInput.style.display = tipo ? "" : "none";
+        urlInput.style.display = tipo === "video" ? "" : "none";
+        fileInput.value = "";
+        urlInput.value = "";
+        if (tipo === "imagem") {
+          fileInput.accept = "image/*";
+          hint.textContent = "Anexe uma foto (JPG/PNG). Ela é redimensionada automaticamente.";
+        } else if (tipo === "pdf") {
+          fileInput.accept = "application/pdf,.pdf";
+          hint.textContent = "Anexe um PDF (até 20 MB).";
+        } else if (tipo === "video") {
+          fileInput.accept = "video/mp4,video/webm,.mp4,.webm";
+          hint.textContent = "Cole um link do YouTube/Vimeo ou anexe um arquivo MP4/WebM (até 20 MB).";
+        } else {
+          hint.textContent = "";
+        }
+      }
+      sel.addEventListener("change", syncInfoAnexo);
+      syncInfoAnexo();
       sec.querySelector("#qp-info-add").addEventListener("click", addInformativo);
     }
     return sec;
@@ -907,6 +961,40 @@
         else renderInformativos([], (res && res.message) || "Não foi possível carregar os informativos.");
       })
       .catch(function () { renderInformativos([], "Falha de conexão."); });
+  }
+
+  function renderInformativoAnexo(info) {
+    var tipo = info.anexoTipo;
+    var val = info.anexoValor;
+    if (!tipo || !val) return "";
+    var nome = info.anexoNome || "anexo";
+    var body = "";
+
+    if (tipo === "imagem" && isImageSrc(val)) {
+      body = '<img src="' + esc(val) + '" alt="' + esc(nome) + '">';
+    } else if (tipo === "pdf") {
+      body =
+        '<iframe src="' + esc(val) + '" loading="lazy" title="' + esc(nome) + '"></iframe>' +
+        '<a class="qp-info-anexo-link" href="' + esc(val) + '" target="_blank" rel="noopener">Abrir PDF em nova aba</a>';
+    } else if (tipo === "video") {
+      var emb = ytEmbed(val);
+      if (emb) {
+        body =
+          '<div class="qp-video" oncontextmenu="return false">' +
+          '<iframe src="' + esc(emb) + '" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>' +
+          '<span class="qp-video-guard" aria-hidden="true"></span>' +
+          "</div>";
+      } else if (/drive\.google\.com/i.test(val)) {
+        body = '<iframe src="' + esc(val) + '" loading="lazy" title="' + esc(nome) + '"></iframe>';
+      } else {
+        body = '<p class="qp-empty">Vídeo indisponível para exibição no portal.</p>';
+      }
+    }
+
+    if (!body) return "";
+    return '<div class="qp-info-anexo qp-info-anexo-' + esc(tipo) + '">' +
+      '<div class="qp-info-anexo-label">📎 ' + esc(nome) + "</div>" +
+      body + "</div>";
   }
 
   function renderInformativoComments(info) {
@@ -980,6 +1068,7 @@
         '  <div class="qp-meta">Publicado por ' + esc(info.autor || "admin") + " • " + esc(fmtTime(info.criadoEm)) + "</div>" +
         "</header>" +
         '<div class="qp-info-body">' + esc(info.texto || "").replace(/\n/g, "<br>") + "</div>" +
+        renderInformativoAnexo(info) +
         readBlock +
         adminBlock +
         renderInformativoComments(info) +
@@ -1004,18 +1093,103 @@
     var titulo = (document.getElementById("qp-info-titulo").value || "").trim();
     var texto = (document.getElementById("qp-info-texto").value || "").trim();
     if (!titulo || !texto) { alert("Preencha título e texto do informativo."); return; }
+
+    var anexoTipo = (document.getElementById("qp-info-anexo-tipo").value || "").trim();
+    var fileInput = document.getElementById("qp-info-anexo-file");
+    var urlInput = document.getElementById("qp-info-anexo-url");
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    var videoUrl = (urlInput && urlInput.value || "").trim();
     var btn = document.getElementById("qp-info-add");
-    btn.disabled = true;
-    api({ action: "addInformativo", email: state.session.email, titulo: titulo, texto: texto })
-      .then(function (res) {
-        if (res && res.ok) {
-          document.getElementById("qp-info-titulo").value = "";
-          document.getElementById("qp-info-texto").value = "";
-          loadInformativos();
-        } else alert((res && res.message) || "Não foi possível publicar.");
-      })
-      .catch(function () { alert("Falha de conexão."); })
-      .then(function () { btn.disabled = false; });
+
+    function resetForm() {
+      document.getElementById("qp-info-titulo").value = "";
+      document.getElementById("qp-info-texto").value = "";
+      document.getElementById("qp-info-anexo-tipo").value = "";
+      if (fileInput) fileInput.value = "";
+      if (urlInput) urlInput.value = "";
+      document.getElementById("qp-info-anexo-tipo").dispatchEvent(new Event("change"));
+    }
+
+    function publish(payload) {
+      btn.disabled = true;
+      btn.textContent = "Publicando…";
+      api(payload)
+        .then(function (res) {
+          if (res && res.ok) {
+            resetForm();
+            loadInformativos();
+          } else alert((res && res.message) || "Não foi possível publicar.");
+        })
+        .catch(function () { alert("Falha de conexão."); })
+        .then(function () { btn.disabled = false; btn.textContent = "Publicar informativo"; });
+    }
+
+    var basePayload = {
+      action: "addInformativo",
+      email: state.session.email,
+      titulo: titulo,
+      texto: texto,
+      anexoTipo: anexoTipo || ""
+    };
+
+    if (!anexoTipo) {
+      publish(basePayload);
+      return;
+    }
+
+    if (anexoTipo === "imagem") {
+      if (!file) { alert("Selecione uma foto para anexar."); return; }
+      btn.disabled = true;
+      btn.textContent = "Processando imagem…";
+      compressImageFile(file, function (dataUrl, err) {
+        if (err) { btn.disabled = false; btn.textContent = "Publicar informativo"; alert(err); return; }
+        publish(Object.assign({}, basePayload, {
+          anexoValor: dataUrl,
+          anexoNome: file.name || "foto.jpg"
+        }));
+      });
+      return;
+    }
+
+    if (anexoTipo === "pdf") {
+      if (!file) { alert("Selecione um PDF para anexar."); return; }
+      btn.disabled = true;
+      btn.textContent = "Enviando PDF…";
+      readFileAsBase64(file, function (b64, mime, err) {
+        if (err) { btn.disabled = false; btn.textContent = "Publicar informativo"; alert(err); return; }
+        publish(Object.assign({}, basePayload, {
+          anexoBase64: b64,
+          anexoMime: mime || "application/pdf",
+          anexoNome: file.name || "documento.pdf"
+        }));
+      });
+      return;
+    }
+
+    if (anexoTipo === "video") {
+      if (file) {
+        btn.disabled = true;
+        btn.textContent = "Enviando vídeo…";
+        readFileAsBase64(file, function (b64, mime, err) {
+          if (err) { btn.disabled = false; btn.textContent = "Publicar informativo"; alert(err); return; }
+          publish(Object.assign({}, basePayload, {
+            anexoBase64: b64,
+            anexoMime: mime || "video/mp4",
+            anexoNome: file.name || "video.mp4"
+          }));
+        });
+        return;
+      }
+      if (!videoUrl) { alert("Cole um link de vídeo ou anexe um arquivo MP4/WebM."); return; }
+      if (!isHttpUrl(videoUrl)) { alert("Use uma URL começando com http(s)://"); return; }
+      publish(Object.assign({}, basePayload, {
+        anexoValor: videoUrl,
+        anexoNome: "vídeo"
+      }));
+      return;
+    }
+
+    alert("Tipo de anexo inválido.");
   }
 
   function markInformativoRead(infoId, btn) {

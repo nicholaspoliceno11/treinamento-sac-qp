@@ -882,11 +882,65 @@ function handleSubmitDesafioResposta(req) {
 }
 
 /* ---------------- Informativos (boletim na home) ---------------- */
-var INFORMATIVOS_HEADERS = ["ID", "TITULO", "TEXTO", "AUTOR", "EMAIL", "CRIADO_EM"];
+var INFORMATIVOS_HEADERS = ["ID", "TITULO", "TEXTO", "AUTOR", "EMAIL", "CRIADO_EM", "ANEXO_TIPO", "ANEXO_VALOR", "ANEXO_NOME"];
 var INFORMATIVO_LEITURAS_HEADERS = ["ID", "INFO_ID", "EMAIL", "NOME", "PERFIL", "TS"];
 var INFORMATIVO_COMENTARIOS_HEADERS = ["ID", "INFO_ID", "NOME", "EMAIL", "PERFIL", "TEXTO", "TS"];
+var INFORMATIVOS_DRIVE_FOLDER = "QP Portal Informativos";
+var MAX_INFO_IMAGE_CHARS = 50000;
+var MAX_INFO_FILE_BYTES = 20 * 1024 * 1024; // 20 MB (PDF ou vídeo anexado)
 
-function informativosSheet() { return ensureSheet("Informativos", INFORMATIVOS_HEADERS); }
+function ensureColumns(sh, headers) {
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var row1 = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var existing = row1.map(headerKey);
+  var needed = headers.map(headerKey);
+  var i, col;
+  for (i = 0; i < needed.length; i++) {
+    if (existing.indexOf(needed[i]) < 0) {
+      col = sh.getLastColumn() + 1;
+      sh.getRange(1, col).setValue(headers[i]);
+    }
+  }
+}
+
+function informativosSheet() {
+  var sh = ensureSheet("Informativos", INFORMATIVOS_HEADERS);
+  ensureColumns(sh, INFORMATIVOS_HEADERS);
+  return sh;
+}
+
+function informativosDriveFolder() {
+  var folders = DriveApp.getFoldersByName(INFORMATIVOS_DRIVE_FOLDER);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(INFORMATIVOS_DRIVE_FOLDER);
+}
+
+function drivePreviewUrl(fileId) {
+  return "https://drive.google.com/file/d/" + fileId + "/preview";
+}
+
+function saveInformativoFileFromBase64(base64, mimeType, fileName) {
+  var raw = norm(base64);
+  if (!raw) return { ok: false, message: "Arquivo vazio" };
+  var bytes;
+  try {
+    bytes = Utilities.base64Decode(raw);
+  } catch (e) {
+    return { ok: false, message: "Arquivo inválido" };
+  }
+  if (bytes.length > MAX_INFO_FILE_BYTES) {
+    return { ok: false, message: "Arquivo muito grande (máx. 20 MB)" };
+  }
+  mimeType = norm(mimeType) || "application/octet-stream";
+  fileName = norm(fileName) || "anexo";
+  var blob = Utilities.newBlob(bytes, mimeType, fileName);
+  var file = informativosDriveFolder().createFile(blob);
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e2) {}
+  return { ok: true, url: drivePreviewUrl(file.getId()), nome: fileName };
+}
+
 function informativoLeiturasSheet() { return ensureSheet("InformativoLeituras", INFORMATIVO_LEITURAS_HEADERS); }
 function informativoComentariosSheet() { return ensureSheet("InformativoComentarios", INFORMATIVO_COMENTARIOS_HEADERS); }
 
@@ -938,6 +992,9 @@ function listInformativos(userEmail, admin) {
       texto: norm(row[2]),
       autor: norm(row[3]),
       criadoEm: norm(row[5]),
+      anexoTipo: norm(row[6]),
+      anexoValor: norm(row[7]),
+      anexoNome: norm(row[8]),
       lido: lido,
       totalLeituras: leituras.length,
       comentarios: comentariosByInfo[id] || []
@@ -981,10 +1038,45 @@ function handleAddInformativo(req) {
   var titulo = norm(req.titulo);
   var texto = norm(req.texto);
   if (!titulo || !texto) return { ok: false, message: "Título e texto são obrigatórios" };
+
+  var anexoTipo = norm(req.anexoTipo);
+  var anexoValor = "";
+  var anexoNome = norm(req.anexoNome);
+  var saved;
+
+  if (anexoTipo === "imagem") {
+    anexoValor = norm(req.anexoValor);
+    if (!anexoValor) return { ok: false, message: "Selecione uma foto para anexar" };
+    if (anexoValor.length > MAX_INFO_IMAGE_CHARS) {
+      return { ok: false, message: "Imagem muito grande após compressão. Use uma foto menor." };
+    }
+    if (!anexoNome) anexoNome = "foto.jpg";
+  } else if (anexoTipo === "pdf") {
+    saved = saveInformativoFileFromBase64(req.anexoBase64, req.anexoMime || "application/pdf", anexoNome || "documento.pdf");
+    if (!saved.ok) return saved;
+    anexoValor = saved.url;
+    anexoNome = saved.nome;
+  } else if (anexoTipo === "video") {
+    if (norm(req.anexoBase64)) {
+      saved = saveInformativoFileFromBase64(req.anexoBase64, req.anexoMime || "video/mp4", anexoNome || "video.mp4");
+      if (!saved.ok) return saved;
+      anexoValor = saved.url;
+      anexoNome = saved.nome;
+    } else {
+      anexoValor = norm(req.anexoValor);
+      if (!anexoValor || !/^https?:\/\//i.test(anexoValor)) {
+        return { ok: false, message: "Cole um link de vídeo (YouTube/Vimeo) ou anexe um arquivo MP4/WebM" };
+      }
+      if (!anexoNome) anexoNome = "vídeo";
+    }
+  } else if (anexoTipo) {
+    return { ok: false, message: "Tipo de anexo inválido" };
+  }
+
   var id = "I" + new Date().getTime();
   informativosSheet().appendRow([
     id, titulo, texto, cell(auth.user, "nome"), cell(auth.user, "email"),
-    new Date().toISOString()
+    new Date().toISOString(), anexoTipo, anexoValor, anexoNome
   ]);
   return { ok: true, id: id };
 }

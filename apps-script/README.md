@@ -81,8 +81,8 @@ também exigem `email` correspondente à sessão.
 | `updateUser` | email, sessionToken, adminSenha, targetEmail, changes `{nome?,perfil?,acessoBackoffice?,bloqueado?,senha?}` | `{ok}` (só admin) |
 | `deleteUser` | email, sessionToken, adminSenha, targetEmail | `{ok}` (só admin) |
 | `changePassword` | email, sessionToken, senhaAtual, novaSenha | `{ok}` ou `{ok:false, error:"senha_atual"\|"senha_fraca"}` |
-| `getInformativos` | email, sessionToken | `{ok, informativos:[...]}` — cada item: `{id, titulo, texto, autor, criadoEm, lido, totalLeituras, comentarios:[...]}`; admin também recebe `leituras:[{nome,email,perfil,ts}]` |
-| `addInformativo` | email, sessionToken, titulo, texto | `{ok, id}` (só admin) |
+| `getInformativos` | email, sessionToken | `{ok, informativos:[...]}` — cada item: `{id, titulo, texto, autor, criadoEm, anexoTipo?, anexoValor?, anexoNome?, lido, totalLeituras, comentarios:[...]}`; admin também recebe `leituras:[{nome,email,perfil,ts}]` |
+| `addInformativo` | email, sessionToken, titulo, texto, anexoTipo? (`imagem`\|`pdf`\|`video`), anexoValor? (foto data URI ou URL de vídeo), anexoBase64? + anexoMime? + anexoNome? (PDF/arquivo de vídeo → salvo no Google Drive) | `{ok, id}` (só admin) |
 | `markInformativoRead` | email, sessionToken, informativoId | `{ok}` ou `{ok, jaLido:true}` — atendentes e backoffice confirmam leitura |
 | `addInformativoComment` | email, sessionToken, informativoId, texto | `{ok, id}` |
 
