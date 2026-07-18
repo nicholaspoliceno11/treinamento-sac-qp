@@ -10,8 +10,9 @@
  * (a ORDEM não importa — as colunas são detectadas pelo nome):
  *   NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO
  *   (a coluna "SENHA TEMPORARIA" é opcional)
- *   (a coluna "ACESSO ACADEMIA" na aba Login Treinamento — use SIM ou NÃO)
- *   OU uma aba separada "ACESSO ACADEMIA" com colunas NOME + ACESSO (Sim/Não)
+ *   (a coluna "ACESSO BACKOFFICE" na aba Login Treinamento — use SIM ou NÃO;
+ *    a coluna legada "ACESSO ACADEMIA" também é aceita)
+ *   OU uma aba separada "ACESSO BACKOFFICE" (ou "ACESSO ACADEMIA") com colunas NOME + ACESSO (Sim/Não)
  *
  * Segurança: senhas são armazenadas como hash SHA-256 com sal (formato sha256$...).
  * No primeiro login com senha em texto puro, o script converte automaticamente para hash.
@@ -23,7 +24,7 @@
 
 var SPREADSHEET_ID = "1TxJC6cboGQiQwu5faAqZZo-vXIpO_6uRI2e_DKIlRgA";
 var LOGIN_SHEET = "Login Treinamento"; // nome da aba com os usuários
-var ACESSO_ACADEMIA_SHEET = "ACESSO ACADEMIA"; // aba opcional (NOME + ACESSO)
+var ACESSO_BACKOFFICE_SHEET = "ACESSO BACKOFFICE"; // aba opcional (NOME + ACESSO); legado: "ACESSO ACADEMIA"
 
 // --- Segurança (sessão, senha, brute-force) ---
 var SESSION_SHEET = "Sessoes";
@@ -127,7 +128,7 @@ function loginCols(headers) {
     senhaTemp: find("SENHA TEMPORARIA", "SENHA TEMPORARIA "),
     perfil: find("PERFIL"),
     andamento: find("ANDAMENTO"),
-    acessoAcademia: find("ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "TOPICO ACADEMIA"),
+    acessoBackoffice: find("ACESSO BACKOFFICE", "ACESSO ACADEMIA", "ACESSO PARA TOPICO ACADEMIA", "TOPICO ACADEMIA"),
     bloqueado: find("BLOQUEADO", "BLOQUEADO ACESSO", "ACESSO BLOQUEADO")
   };
 }
@@ -153,12 +154,12 @@ function isAccessError(val) {
   return !s || s.indexOf("REF") >= 0 || s.indexOf("ERROR") >= 0 || s.indexOf("N/A") >= 0 || s.indexOf("VALOR") >= 0;
 }
 
-function acessoAcademiaVal(u) {
-  if (!u || u.cols.acessoAcademia < 0) return "";
-  return loginSheet().getRange(u.row, u.cols.acessoAcademia + 1).getDisplayValue();
+function acessoBackofficeVal(u) {
+  if (!u || u.cols.acessoBackoffice < 0) return "";
+  return loginSheet().getRange(u.row, u.cols.acessoBackoffice + 1).getDisplayValue();
 }
 
-function academiaSheetCols(headers) {
+function backofficeSheetCols(headers) {
   var H = (headers || []).map(headerKey);
   function find() {
     for (var a = 0; a < arguments.length; a++) {
@@ -170,17 +171,17 @@ function academiaSheetCols(headers) {
   return {
     nome: find("NOME COMPLETO", "NOME"),
     email: find("E-MAIL", "EMAIL"),
-    acesso: find("ACESSO ACADEMIA", "ACESSO")
+    acesso: find("ACESSO BACKOFFICE", "ACESSO ACADEMIA", "ACESSO")
   };
 }
 
-// Lê a aba separada "ACESSO ACADEMIA" (NOME + ACESSO). Retorna null se a aba não existir.
-function academiaAccessFromSheet(u) {
-  var sh = getSS().getSheetByName(ACESSO_ACADEMIA_SHEET);
+// Lê aba separada de acesso ao Backoffice (NOME + ACESSO). Aceita nome legado "ACESSO ACADEMIA".
+function backofficeAccessFromSheet(u) {
+  var sh = getSS().getSheetByName(ACESSO_BACKOFFICE_SHEET) || getSS().getSheetByName("ACESSO ACADEMIA");
   if (!sh) return null;
   var values = sh.getDataRange().getValues();
   if (!values.length) return null;
-  var cols = academiaSheetCols(values[0]);
+  var cols = backofficeSheetCols(values[0]);
   if (cols.acesso < 0) return null;
 
   var userNome = stripAccents(cell(u, "nome")).toUpperCase();
@@ -200,18 +201,19 @@ function academiaAccessFromSheet(u) {
   return false; // não está na lista = sem acesso
 }
 
-function hasAcademiaAccess(u) {
+function hasBackofficeAccess(u) {
   if (!u) return false;
   if (/admin/i.test(cell(u, "perfil"))) return true;
-  // Opção A: coluna na aba Login Treinamento (lê o texto exibido: Sim/Não)
-  if (u.cols.acessoAcademia >= 0) {
-    var val = acessoAcademiaVal(u);
+  if (/backoffice/i.test(cell(u, "perfil"))) return true;
+  // Coluna na aba Login Treinamento (lê o texto exibido: Sim/Não)
+  if (u.cols.acessoBackoffice >= 0) {
+    var val = acessoBackofficeVal(u);
     if (isAccessError(val)) return false;
     if (isNao(val)) return false;
     return isSim(val);
   }
-  // Opção B: aba separada "ACESSO ACADEMIA"
-  var fromSheet = academiaAccessFromSheet(u);
+  // Aba separada "ACESSO BACKOFFICE" (ou legado "ACESSO ACADEMIA")
+  var fromSheet = backofficeAccessFromSheet(u);
   if (fromSheet !== null) return fromSheet;
   return false;
 }
@@ -505,7 +507,7 @@ function handleLogin(req) {
     nome: cell(u, "nome"),
     email: userEmail,
     perfil: cell(u, "perfil") || "Atendente",
-    acessoAcademia: !!hasAcademiaAccess(u),
+    acessoBackoffice: !!hasBackofficeAccess(u),
     weakPassword: weakPassword
   };
 }
@@ -525,7 +527,7 @@ function handleGetState(req) {
     ok: true,
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
-    acessoAcademia: !!hasAcademiaAccess(u),
+    acessoBackoffice: !!hasBackofficeAccess(u),
     concluidos: completedTopics(cell(u, "email"))
   };
 }
@@ -895,6 +897,7 @@ function isUserBlocked(u) {
 function normPerfil(perfil) {
   var p = stripAccents(norm(perfil)).toLowerCase();
   if (/admin/.test(p)) return "Administrador";
+  if (/backoffice/.test(p)) return "Backoffice";
   return "Atendente";
 }
 
@@ -934,7 +937,7 @@ function revokeSessionsForEmail(email) {
 
 function maxLoginColIndex(cols) {
   var max = 0;
-  var keys = ["nome", "email", "senha", "senhaTemp", "perfil", "andamento", "acessoAcademia", "bloqueado"];
+  var keys = ["nome", "email", "senha", "senhaTemp", "perfil", "andamento", "acessoBackoffice", "bloqueado"];
   for (var i = 0; i < keys.length; i++) {
     if (cols[keys[i]] > max) max = cols[keys[i]];
   }
@@ -950,7 +953,7 @@ function newLoginRow(cols, data) {
   if (cols.senha >= 0) row[cols.senha] = data.senhaHash || "";
   if (cols.perfil >= 0) row[cols.perfil] = normPerfil(data.perfil);
   if (cols.andamento >= 0) row[cols.andamento] = norm(data.andamento) || "0%";
-  if (cols.acessoAcademia >= 0) row[cols.acessoAcademia] = data.acessoAcademia ? "SIM" : "NAO";
+  if (cols.acessoBackoffice >= 0) row[cols.acessoBackoffice] = data.acessoBackoffice ? "SIM" : "NAO";
   if (cols.bloqueado >= 0) row[cols.bloqueado] = data.bloqueado ? "SIM" : "NAO";
   return row;
 }
@@ -960,7 +963,7 @@ function userPublic(u) {
     email: cell(u, "email"),
     nome: cell(u, "nome"),
     perfil: cell(u, "perfil") || "Atendente",
-    acessoAcademia: !!hasAcademiaAccess(u),
+    acessoBackoffice: !!hasBackofficeAccess(u),
     bloqueado: isUserBlocked(u),
     andamento: u.cols.andamento >= 0 ? norm(u.data[u.cols.andamento]) : "0%"
   };
@@ -1008,7 +1011,7 @@ function handleCreateUser(req) {
     senhaHash: hashPassword(senha),
     perfil: normPerfil(user.perfil),
     andamento: "0%",
-    acessoAcademia: !!user.acessoAcademia,
+    acessoBackoffice: !!user.acessoBackoffice,
     bloqueado: !!user.bloqueado
   }));
   return { ok: true };
@@ -1039,8 +1042,8 @@ function handleUpdateUser(req) {
     }
     sh.getRange(u.row, cols.perfil + 1).setValue(novoPerfil);
   }
-  if (changes.acessoAcademia != null && cols.acessoAcademia >= 0) {
-    sh.getRange(u.row, cols.acessoAcademia + 1).setValue(changes.acessoAcademia ? "SIM" : "NAO");
+  if (changes.acessoBackoffice != null && cols.acessoBackoffice >= 0) {
+    sh.getRange(u.row, cols.acessoBackoffice + 1).setValue(changes.acessoBackoffice ? "SIM" : "NAO");
   }
   if (changes.bloqueado != null && cols.bloqueado >= 0) {
     if (targetEmail.toLowerCase() === adminEmail && changes.bloqueado) {

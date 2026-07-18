@@ -28,14 +28,15 @@ mantém as senhas privadas e expõe uma pequena API que o site consome.
 Aba de usuários (linha 1 = cabeçalhos). As colunas são **detectadas pelo nome**,
 então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhecidos:
 
-| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO | ACESSO ACADEMIA *(opcional)* |
+| NOME COMPLETO | E-MAIL | SENHA | PERFIL | ANDAMENTO | ACESSO BACKOFFICE *(opcional)* |
 |---|---|---|---|---|---|
 
-- **PERFIL**: use `Administrador` ou `Atendente`.
-- **ACESSO ACADEMIA** (controle do tópico 🎥 Academia) — duas formas válidas:
-  - **Opção A:** coluna `ACESSO ACADEMIA` na aba **Login Treinamento** (`SIM` / `NÃO`), ou
-  - **Opção B:** aba separada **`ACESSO ACADEMIA`** com colunas `NOME` + `ACESSO` (`Sim` / `Não`). O nome deve ser igual ao da aba de login.
-  - Administradores sempre têm acesso.
+- **PERFIL**: use `Administrador`, `Backoffice` ou `Atendente`.
+- **ACESSO BACKOFFICE** (controle do tópico 🖥️ Backoffice) — duas formas válidas:
+  - **Opção A:** coluna `ACESSO BACKOFFICE` na aba **Login Treinamento** (`SIM` / `NÃO`), ou
+  - **Opção B:** aba separada **`ACESSO BACKOFFICE`** com colunas `NOME` + `ACESSO` (`Sim` / `Não`). O nome deve ser igual ao da aba de login.
+  - A coluna legada `ACESSO ACADEMIA` ainda é lida se `ACESSO BACKOFFICE` não existir.
+  - Perfil **Backoffice** e **Administrador** têm acesso automático.
 - **ANDAMENTO**: preenchido automaticamente pelo sistema (ex.: `57%`).
 - **Login**: valida a coluna `SENHA` (a coluna `SENHA TEMPORARIA`, se existir, também é aceita).
   As senhas são gravadas como **hash SHA-256 com sal** (`sha256$...`). No primeiro login
@@ -64,9 +65,9 @@ também exigem `email` correspondente à sessão.
 
 | action | envia | retorna |
 |---|---|---|
-| `login` | email, senha | `{ok, sessionToken, nome, email, perfil, acessoAcademia, weakPassword?}` ou `{ok:false, error:"senha"\|"usuario"\|"bloqueado", retryAfter?, attemptsLeft?}` |
+| `login` | email, senha | `{ok, sessionToken, nome, email, perfil, acessoBackoffice, weakPassword?}` ou `{ok:false, error:"senha"\|"usuario"\|"bloqueado", retryAfter?, attemptsLeft?}` |
 | `logout` | email, sessionToken | `{ok}` |
-| `getState` | email, sessionToken | `{ok, nome, perfil, acessoAcademia, concluidos:[...]}` ou `{ok:false, error:"auth"}` |
+| `getState` | email, sessionToken | `{ok, nome, perfil, acessoBackoffice, concluidos:[...]}` ou `{ok:false, error:"auth"}` |
 | `setProgress` | email, sessionToken, topic, done, total | `{ok, concluidos:[...], percent}` |
 | `getComments` | sessionToken, topic | `{ok, comments:[...]}` |
 | `addComment` | email, sessionToken, topic, texto | `{ok}` |
@@ -76,8 +77,8 @@ também exigem `email` correspondente à sessão.
 | `addDesafioPergunta` | email, sessionToken, pergunta, opcoes `{A,B,C,D}`, correta, ativo | `{ok, id}` (só admin) |
 | `submitDesafioResposta` | email, sessionToken, questaoId, escolha (`A`–`D`) | `{ok, acertou}` — pode refazer se errou |
 | `listUsers` | email, sessionToken | `{ok, users:[...]}` (só admin) |
-| `createUser` | email, sessionToken, adminSenha, user `{nome,email,senha,perfil,acessoAcademia,bloqueado}` | `{ok}` (só admin) |
-| `updateUser` | email, sessionToken, adminSenha, targetEmail, changes `{nome?,perfil?,acessoAcademia?,bloqueado?,senha?}` | `{ok}` (só admin) |
+| `createUser` | email, sessionToken, adminSenha, user `{nome,email,senha,perfil,acessoBackoffice,bloqueado}` | `{ok}` (só admin) |
+| `updateUser` | email, sessionToken, adminSenha, targetEmail, changes `{nome?,perfil?,acessoBackoffice?,bloqueado?,senha?}` | `{ok}` (só admin) |
 | `deleteUser` | email, sessionToken, adminSenha, targetEmail | `{ok}` (só admin) |
 
 Usuários bloqueados (`BLOQUEADO = SIM` na planilha) não conseguem fazer login. A coluna `BLOQUEADO` é criada automaticamente na primeira gestão pelo portal.

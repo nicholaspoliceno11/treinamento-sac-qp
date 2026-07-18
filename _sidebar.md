@@ -16,7 +16,7 @@
 * ⚙️ Sistemas
   * [CMS](cms.md)
 
-* 🎥 Academia
+* 🖥️ Backoffice
   * [Treinamentos](videos.md)
 
 * 🏆 Gamificação

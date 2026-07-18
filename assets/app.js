@@ -13,14 +13,14 @@
     { id: "prazos", titulo: "Financeiro / Prazos" },
     { id: "antt", titulo: "ANTT" },
     { id: "cms", titulo: "CMS" },
-    { id: "videos", titulo: "Academia / Treinamentos" }
+    { id: "videos", titulo: "Backoffice / Treinamentos" }
   ];
   var TOPIC_IDS = TOPICS.map(function (t) { return t.id; });
   var TOTAL = TOPICS.length;
-  var ACADEMIA_TOPIC = "videos";
+  var BACKOFFICE_TOPIC = "videos";
 
   var state = {
-    session: null,        // { nome, email, perfil, acessoAcademia, token }
+    session: null,        // { nome, email, perfil, acessoBackoffice, token }
     concluidos: [],       // ["onboarding", ...]
     percent: 0,
     accessResolved: false // true após login/hydrate confirmarem acesso na API
@@ -139,7 +139,7 @@
     state.accessResolved = false;
   }
   function isAdmin() { return state.session && /admin/i.test(state.session.perfil || ""); }
-  function parseAcademiaAccess(val) {
+  function parseBackofficeAccess(val) {
     if (val === true || val === 1) return true;
     if (val === false || val === 0 || val == null) return false;
     if (typeof val === "number") return false;
@@ -147,18 +147,22 @@
     try { v = v.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch (e) {}
     return v === "sim" || v === "s" || v === "yes" || v === "y";
   }
-  function hasAcademiaAccess() {
+  function isBackofficeProfile() {
+    return state.session && /backoffice/i.test(state.session.perfil || "");
+  }
+  function hasBackofficeAccess() {
     if (!state.session) return false;
     if (isAdmin()) return true;
+    if (isBackofficeProfile()) return true;
     if (!state.accessResolved) return false;
-    return parseAcademiaAccess(state.session.acessoAcademia);
+    return parseBackofficeAccess(state.session.acessoBackoffice);
   }
   function canAccessTopic(topic) {
-    if (topic === ACADEMIA_TOPIC) return hasAcademiaAccess();
+    if (topic === BACKOFFICE_TOPIC) return hasBackofficeAccess();
     return true;
   }
   function effectiveTotal() {
-    return hasAcademiaAccess() ? TOTAL : TOTAL - 1;
+    return hasBackofficeAccess() ? TOTAL : TOTAL - 1;
   }
   function effectiveConcluidos() {
     return state.concluidos.filter(function (t) { return canAccessTopic(t); });
@@ -204,7 +208,9 @@
             nome: res.nome,
             email: res.email || email,
             perfil: res.perfil,
-            acessoAcademia: parseAcademiaAccess(res.acessoAcademia),
+            acessoBackoffice: parseBackofficeAccess(
+              res.acessoBackoffice != null ? res.acessoBackoffice : res.acessoAcademia
+            ),
             token: res.sessionToken || ""
           });
           state.accessResolved = true;
@@ -264,7 +270,9 @@
         if (res && res.ok) {
           state.concluidos = res.concluidos || [];
           if (res.perfil) state.session.perfil = res.perfil;
-          state.session.acessoAcademia = parseAcademiaAccess(res.acessoAcademia);
+          state.session.acessoBackoffice = parseBackofficeAccess(
+            res.acessoBackoffice != null ? res.acessoBackoffice : res.acessoAcademia
+          );
           state.accessResolved = true;
           recompute();
           return true;
@@ -325,14 +333,14 @@
     if (!apiConfigured() || !state.session) return;
     var sidebar = document.querySelector(".sidebar-nav");
     if (!sidebar) return;
-    var allowed = hasAcademiaAccess();
+    var allowed = hasBackofficeAccess();
     sidebar.querySelectorAll("li").forEach(function (li) {
-      var isAcademia = !!li.querySelector('a[href*="videos"]') ||
-        /academia/i.test(((li.querySelector("p, strong") || {}).textContent || ""));
-      if (isAcademia) {
+      var isBackoffice = !!li.querySelector('a[href*="videos"]') ||
+        /backoffice/i.test(((li.querySelector("p, strong") || {}).textContent || ""));
+      if (isBackoffice) {
         li.style.display = allowed ? "" : "none";
         var parentLi = li.parentElement && li.parentElement.closest("li");
-        if (parentLi && /academia/i.test(parentLi.textContent || "")) {
+        if (parentLi && /backoffice/i.test(parentLi.textContent || "")) {
           parentLi.style.display = allowed ? "" : "none";
         }
         return;
@@ -375,7 +383,7 @@
     var topic = currentTopic();
     var blocked = document.getElementById("qp-restricted");
     if (topic === "admin-usuarios" && !isAdmin()) {
-      section.classList.add("qp-academia-blocked");
+      section.classList.add("qp-backoffice-blocked");
       Array.from(section.children).forEach(function (el) {
         if (el.id !== "qp-restricted" && el.id !== "qp-topbar" && el.id !== "qp-injected") {
           el.style.display = "none";
@@ -399,7 +407,7 @@
       return true;
     }
     if (!canAccessTopic(topic)) {
-      section.classList.add("qp-academia-blocked");
+      section.classList.add("qp-backoffice-blocked");
       Array.from(section.children).forEach(function (el) {
         if (el.id !== "qp-restricted" && el.id !== "qp-topbar" && el.id !== "qp-injected") {
           el.style.display = "none";
@@ -412,14 +420,14 @@
         blocked.className = "qp-restricted";
         blocked.innerHTML =
           "<h2>🔒 Acesso restrito</h2>" +
-          "<p>Você não tem permissão para acessar a <strong>Academia</strong>.</p>" +
-          "<p class=\"qp-hint\">Solicite liberação com a gestão (coluna <em>ACESSO ACADEMIA = SIM</em> na planilha).</p>";
+          "<p>Você não tem permissão para acessar o <strong>Backoffice</strong>.</p>" +
+          "<p class=\"qp-hint\">Acesso restrito a perfil <em>Backoffice</em> ou coluna <em>ACESSO BACKOFFICE = SIM</em>.</p>";
         section.insertBefore(blocked, section.firstChild);
       }
       blocked.style.display = "";
       return true;
     }
-    section.classList.remove("qp-academia-blocked");
+    section.classList.remove("qp-backoffice-blocked");
     if (blocked) blocked.style.display = "none";
     Array.from(section.children).forEach(function (el) {
       if (el.getAttribute("data-qp-hidden") === "1") {
@@ -966,8 +974,8 @@
       '  <input id="qp-user-senha" type="password" placeholder="Mín. 8 caracteres, letras e números">' +
       '  <div class="qp-row">' +
       '    <label for="qp-user-perfil">Perfil</label>' +
-      '    <select id="qp-user-perfil"><option value="Atendente">Atendente</option><option value="Administrador">Administrador</option></select>' +
-      '    <label class="qp-check"><input id="qp-user-academia" type="checkbox"> Acesso Academia</label>' +
+      '    <select id="qp-user-perfil"><option value="Atendente">Atendente</option><option value="Backoffice">Backoffice</option><option value="Administrador">Administrador</option></select>' +
+      '    <label class="qp-check"><input id="qp-user-backoffice" type="checkbox"> Acesso Backoffice</label>' +
       '    <label class="qp-check"><input id="qp-user-bloqueado" type="checkbox"> Bloquear acesso</label>' +
       '  </div>' +
       '  <div class="qp-row">' +
@@ -986,7 +994,7 @@
     document.getElementById("qp-user-email").value = "";
     document.getElementById("qp-user-senha").value = "";
     document.getElementById("qp-user-perfil").value = "Atendente";
-    document.getElementById("qp-user-academia").checked = false;
+    document.getElementById("qp-user-backoffice").checked = false;
     document.getElementById("qp-user-bloqueado").checked = false;
     document.getElementById("qp-user-email").disabled = false;
     document.getElementById("qp-user-form-title").textContent = "Novo atendente";
@@ -1003,8 +1011,10 @@
     document.getElementById("qp-user-email").value = user.email || "";
     document.getElementById("qp-user-email").disabled = true;
     document.getElementById("qp-user-senha").value = "";
-    document.getElementById("qp-user-perfil").value = /admin/i.test(user.perfil || "") ? "Administrador" : "Atendente";
-    document.getElementById("qp-user-academia").checked = !!user.acessoAcademia;
+    document.getElementById("qp-user-perfil").value = /admin/i.test(user.perfil || "")
+      ? "Administrador"
+      : /backoffice/i.test(user.perfil || "") ? "Backoffice" : "Atendente";
+    document.getElementById("qp-user-backoffice").checked = !!user.acessoBackoffice;
     document.getElementById("qp-user-bloqueado").checked = !!user.bloqueado;
     document.getElementById("qp-user-form-title").textContent = "Editar: " + (user.nome || user.email);
     document.getElementById("qp-user-save").textContent = "Salvar alterações";
@@ -1032,7 +1042,7 @@
     var selfEmail = (state.session.email || "").toLowerCase();
     list.innerHTML =
       '<div class="qp-users-table-wrap"><table class="qp-users-table">' +
-      "<thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Academia</th><th>Status</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>" +
+      "<thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Backoffice</th><th>Status</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>" +
       users.map(function (u) {
         var isSelf = (u.email || "").toLowerCase() === selfEmail;
         var status = u.bloqueado
@@ -1047,7 +1057,7 @@
           "<td>" + esc(u.nome || "—") + "</td>" +
           "<td>" + esc(u.email) + "</td>" +
           "<td>" + esc(u.perfil || "Atendente") + "</td>" +
-          "<td>" + (u.acessoAcademia ? "Sim" : "Não") + "</td>" +
+          "<td>" + (u.acessoBackoffice ? "Sim" : "Não") + "</td>" +
           "<td>" + status + "</td>" +
           "<td>" + esc(u.andamento || "0%") + "</td>" +
           "<td class=\"qp-users-actions\">" + actions + "</td>" +
@@ -1077,14 +1087,14 @@
     var email = (document.getElementById("qp-user-email").value || "").trim();
     var senha = document.getElementById("qp-user-senha").value || "";
     var perfil = document.getElementById("qp-user-perfil").value;
-    var acessoAcademia = document.getElementById("qp-user-academia").checked;
+    var acessoBackoffice = document.getElementById("qp-user-backoffice").checked;
     var bloqueado = document.getElementById("qp-user-bloqueado").checked;
 
     if (!nome || !email) { alert("Preencha nome e e-mail."); return; }
 
     if (editEmail) {
       withAdminPassword("Salvar alterações", "Confirme sua senha para atualizar " + nome + ".", function (adminSenha, done) {
-        var changes = { nome: nome, perfil: perfil, acessoAcademia: acessoAcademia, bloqueado: bloqueado };
+        var changes = { nome: nome, perfil: perfil, acessoBackoffice: acessoBackoffice, bloqueado: bloqueado };
         if (senha) changes.senha = senha;
         adminApi("updateUser", { targetEmail: editEmail, changes: changes }, adminSenha)
           .then(function (res) {
@@ -1103,7 +1113,7 @@
 
     withAdminPassword("Cadastrar atendente", "Confirme sua senha para criar o usuário " + nome + ".", function (adminSenha, done) {
       adminApi("createUser", {
-        user: { nome: nome, email: email, senha: senha, perfil: perfil, acessoAcademia: acessoAcademia, bloqueado: bloqueado }
+        user: { nome: nome, email: email, senha: senha, perfil: perfil, acessoBackoffice: acessoBackoffice, bloqueado: bloqueado }
       }, adminSenha)
         .then(function (res) {
           if (res && res.ok) {

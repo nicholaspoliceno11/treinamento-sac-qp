@@ -59,8 +59,8 @@ Operação e SLA.
 </a>
 
 <a class="card" href="#/videos">
-<h3>🎥 Academia</h3>
-Vídeos e treinamentos.
+<h3>🖥️ Backoffice</h3>
+Treinamentos do backoffice.
 </a>
 
 </div>

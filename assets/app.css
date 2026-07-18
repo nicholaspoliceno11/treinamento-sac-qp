@@ -316,7 +316,7 @@ body:has(#qp-login-overlay.qp-show) #mila-float{
 }
 .qp-restricted p{ margin:8px 0; color:#5a6472; }
 
-.markdown-section.qp-academia-blocked > *:not(#qp-topbar):not(#qp-restricted){
+.markdown-section.qp-backoffice-blocked > *:not(#qp-topbar):not(#qp-restricted){
   display:none!important;
 }
 
