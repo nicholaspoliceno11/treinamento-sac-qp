@@ -75,6 +75,12 @@ também exigem `email` correspondente à sessão.
 | `getDesafio` | email, sessionToken | `{ok, perguntas:[...], respostas:[...]}` — respostas só do próprio usuário |
 | `addDesafioPergunta` | email, sessionToken, pergunta, opcoes `{A,B,C,D}`, correta, ativo | `{ok, id}` (só admin) |
 | `submitDesafioResposta` | email, sessionToken, questaoId, escolha (`A`–`D`) | `{ok, acertou}` — pode refazer se errou |
+| `listUsers` | email, sessionToken | `{ok, users:[...]}` (só admin) |
+| `createUser` | email, sessionToken, adminSenha, user `{nome,email,senha,perfil,acessoAcademia,bloqueado}` | `{ok}` (só admin) |
+| `updateUser` | email, sessionToken, adminSenha, targetEmail, changes `{nome?,perfil?,acessoAcademia?,bloqueado?,senha?}` | `{ok}` (só admin) |
+| `deleteUser` | email, sessionToken, adminSenha, targetEmail | `{ok}` (só admin) |
+
+Usuários bloqueados (`BLOQUEADO = SIM` na planilha) não conseguem fazer login. A coluna `BLOQUEADO` é criada automaticamente na primeira gestão pelo portal.
 
 Abas **DesafioPerguntas** e **DesafioRespostas** são criadas automaticamente.
 Cada atendente só recebe suas próprias respostas em `getDesafio`.

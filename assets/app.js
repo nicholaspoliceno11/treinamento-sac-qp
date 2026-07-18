@@ -228,6 +228,8 @@
           loginMsg(msg, "error");
         } else if (res && res.error === "usuario") {
           loginMsg("E-mail não encontrado no cadastro. Fale com a gestão.", "error");
+        } else if (res && res.error === "conta_bloqueada") {
+          loginMsg("Sua conta está bloqueada. Fale com a gestão.", "error");
         } else {
           loginMsg((res && res.message) || "Não foi possível entrar. Tente novamente.", "error");
         }
@@ -327,11 +329,22 @@
     sidebar.querySelectorAll("li").forEach(function (li) {
       var isAcademia = !!li.querySelector('a[href*="videos"]') ||
         /academia/i.test(((li.querySelector("p, strong") || {}).textContent || ""));
-      if (!isAcademia) return;
-      li.style.display = allowed ? "" : "none";
-      var parentLi = li.parentElement && li.parentElement.closest("li");
-      if (parentLi && /academia/i.test(parentLi.textContent || "")) {
-        parentLi.style.display = allowed ? "" : "none";
+      if (isAcademia) {
+        li.style.display = allowed ? "" : "none";
+        var parentLi = li.parentElement && li.parentElement.closest("li");
+        if (parentLi && /academia/i.test(parentLi.textContent || "")) {
+          parentLi.style.display = allowed ? "" : "none";
+        }
+        return;
+      }
+      var isAdminNav = !!li.querySelector('a[href*="admin-usuarios"]') ||
+        /administra/i.test(((li.querySelector("p, strong") || {}).textContent || ""));
+      if (isAdminNav) {
+        li.style.display = isAdmin() ? "" : "none";
+        var adminParent = li.parentElement && li.parentElement.closest("li");
+        if (adminParent && /administra/i.test(adminParent.textContent || "")) {
+          adminParent.style.display = isAdmin() ? "" : "none";
+        }
       }
     });
   }
@@ -361,6 +374,30 @@
     if (!apiConfigured() || !state.session) return false;
     var topic = currentTopic();
     var blocked = document.getElementById("qp-restricted");
+    if (topic === "admin-usuarios" && !isAdmin()) {
+      section.classList.add("qp-academia-blocked");
+      Array.from(section.children).forEach(function (el) {
+        if (el.id !== "qp-restricted" && el.id !== "qp-topbar" && el.id !== "qp-injected") {
+          el.style.display = "none";
+          el.setAttribute("data-qp-hidden", "1");
+        }
+      });
+      if (!blocked) {
+        blocked = document.createElement("div");
+        blocked.id = "qp-restricted";
+        blocked.className = "qp-restricted";
+        blocked.innerHTML =
+          "<h2>🔒 Acesso restrito</h2>" +
+          "<p>Esta área é exclusiva para <strong>administradores</strong>.</p>";
+        section.insertBefore(blocked, section.firstChild);
+      } else {
+        blocked.innerHTML =
+          "<h2>🔒 Acesso restrito</h2>" +
+          "<p>Esta área é exclusiva para <strong>administradores</strong>.</p>";
+      }
+      blocked.style.display = "";
+      return true;
+    }
     if (!canAccessTopic(topic)) {
       section.classList.add("qp-academia-blocked");
       Array.from(section.children).forEach(function (el) {
@@ -422,6 +459,13 @@
     var topic = currentTopic();
     var wrap = document.createElement("div");
     wrap.id = "qp-injected";
+
+    if (topic === "admin-usuarios") {
+      if (isAdmin()) wrap.appendChild(buildAdminUsersSection());
+      section.appendChild(wrap);
+      if (isAdmin()) loadAdminUsers();
+      return;
+    }
 
     if (topic === "home") {
       section.appendChild(wrap);
@@ -820,6 +864,270 @@
       })
       .catch(function () { alert("Falha de conexão."); })
       .then(function () { btn.disabled = false; });
+  }
+
+  // -------- administração de atendentes
+  function ensureAdminPasswordModal() {
+    var modal = document.getElementById("qp-admin-pw-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "qp-admin-pw-modal";
+    modal.className = "qp-modal";
+    modal.innerHTML =
+      '<div class="qp-modal-card">' +
+      '  <h3 id="qp-admin-pw-title">Confirmar alteração</h3>' +
+      '  <p class="qp-hint" id="qp-admin-pw-desc">Digite sua senha de administrador para continuar.</p>' +
+      '  <label for="qp-admin-pw-input">Sua senha</label>' +
+      '  <input id="qp-admin-pw-input" type="password" autocomplete="current-password" placeholder="Senha do administrador">' +
+      '  <p class="qp-admin-pw-error" id="qp-admin-pw-error"></p>' +
+      '  <div class="qp-modal-actions">' +
+      '    <button type="button" class="qp-btn qp-btn-ghost" id="qp-admin-pw-cancel">Cancelar</button>' +
+      '    <button type="button" class="qp-btn qp-btn-primary" id="qp-admin-pw-confirm">Confirmar</button>' +
+      '  </div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.querySelector("#qp-admin-pw-cancel").addEventListener("click", closeAdminPasswordModal);
+    modal.addEventListener("click", function (ev) {
+      if (ev.target === modal) closeAdminPasswordModal();
+    });
+    return modal;
+  }
+
+  var adminPwCallback = null;
+
+  function closeAdminPasswordModal() {
+    var modal = document.getElementById("qp-admin-pw-modal");
+    if (modal) modal.classList.remove("qp-show");
+    adminPwCallback = null;
+    var input = document.getElementById("qp-admin-pw-input");
+    if (input) input.value = "";
+    var err = document.getElementById("qp-admin-pw-error");
+    if (err) err.textContent = "";
+  }
+
+  function withAdminPassword(title, description, onConfirm) {
+    var modal = ensureAdminPasswordModal();
+    document.getElementById("qp-admin-pw-title").textContent = title || "Confirmar alteração";
+    document.getElementById("qp-admin-pw-desc").textContent = description || "Digite sua senha de administrador para continuar.";
+    var input = document.getElementById("qp-admin-pw-input");
+    var err = document.getElementById("qp-admin-pw-error");
+    var btn = document.getElementById("qp-admin-pw-confirm");
+    err.textContent = "";
+    input.value = "";
+    adminPwCallback = onConfirm;
+    modal.classList.add("qp-show");
+    setTimeout(function () { input.focus(); }, 50);
+
+    function submit() {
+      var senha = input.value || "";
+      if (!senha) { err.textContent = "Informe sua senha."; return; }
+      btn.disabled = true;
+      onConfirm(senha, function (ok, message) {
+        btn.disabled = false;
+        if (ok) closeAdminPasswordModal();
+        else err.textContent = message || "Senha incorreta.";
+      });
+    }
+
+    btn.onclick = submit;
+    input.onkeydown = function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); submit(); }
+      if (ev.key === "Escape") closeAdminPasswordModal();
+    };
+  }
+
+  function adminApi(action, extra, adminSenha) {
+    var payload = { action: action, email: state.session.email, adminSenha: adminSenha };
+    Object.keys(extra || {}).forEach(function (k) { payload[k] = extra[k]; });
+    return api(payload);
+  }
+
+  function adminActionError(res) {
+    if (res && res.error === "senha_admin") return "Senha de administrador incorreta.";
+    if (res && res.error === "perfil") return "Apenas administradores podem fazer isso.";
+    return (res && res.message) || "Não foi possível concluir a operação.";
+  }
+
+  function buildAdminUsersSection() {
+    var sec = document.createElement("div");
+    sec.className = "qp-section qp-admin-users";
+    sec.innerHTML =
+      '<h3 class="qp-section-title">Gerenciar atendentes</h3>' +
+      '<p class="qp-hint">Cadastre, edite, bloqueie ou remova usuários. Toda alteração pede sua senha de administrador.</p>' +
+      '<div id="qp-users-list"><p class="qp-empty">Carregando usuários…</p></div>' +
+      '<div class="qp-form qp-admin-user-form">' +
+      '  <h4 id="qp-user-form-title">Novo atendente</h4>' +
+      '  <input type="hidden" id="qp-user-edit-email" value="">' +
+      '  <label for="qp-user-nome">Nome completo</label>' +
+      '  <input id="qp-user-nome" type="text" placeholder="Nome do atendente">' +
+      '  <label for="qp-user-email">E-mail</label>' +
+      '  <input id="qp-user-email" type="email" placeholder="email@empresa.com">' +
+      '  <label for="qp-user-senha">Senha inicial</label>' +
+      '  <input id="qp-user-senha" type="password" placeholder="Mín. 8 caracteres, letras e números">' +
+      '  <div class="qp-row">' +
+      '    <label for="qp-user-perfil">Perfil</label>' +
+      '    <select id="qp-user-perfil"><option value="Atendente">Atendente</option><option value="Administrador">Administrador</option></select>' +
+      '    <label class="qp-check"><input id="qp-user-academia" type="checkbox"> Acesso Academia</label>' +
+      '    <label class="qp-check"><input id="qp-user-bloqueado" type="checkbox"> Bloquear acesso</label>' +
+      '  </div>' +
+      '  <div class="qp-row">' +
+      '    <button type="button" class="qp-btn qp-btn-primary" id="qp-user-save">Cadastrar atendente</button>' +
+      '    <button type="button" class="qp-btn qp-btn-ghost" id="qp-user-cancel-edit" style="display:none">Cancelar edição</button>' +
+      '  </div>' +
+      '</div>';
+    sec.querySelector("#qp-user-save").addEventListener("click", saveAdminUser);
+    sec.querySelector("#qp-user-cancel-edit").addEventListener("click", resetAdminUserForm);
+    return sec;
+  }
+
+  function resetAdminUserForm() {
+    document.getElementById("qp-user-edit-email").value = "";
+    document.getElementById("qp-user-nome").value = "";
+    document.getElementById("qp-user-email").value = "";
+    document.getElementById("qp-user-senha").value = "";
+    document.getElementById("qp-user-perfil").value = "Atendente";
+    document.getElementById("qp-user-academia").checked = false;
+    document.getElementById("qp-user-bloqueado").checked = false;
+    document.getElementById("qp-user-email").disabled = false;
+    document.getElementById("qp-user-form-title").textContent = "Novo atendente";
+    document.getElementById("qp-user-save").textContent = "Cadastrar atendente";
+    document.getElementById("qp-user-cancel-edit").style.display = "none";
+    var senhaLbl = document.querySelector('label[for="qp-user-senha"]');
+    if (senhaLbl) senhaLbl.textContent = "Senha inicial";
+    document.getElementById("qp-user-senha").placeholder = "Mín. 8 caracteres, letras e números";
+  }
+
+  function fillAdminUserForm(user) {
+    document.getElementById("qp-user-edit-email").value = user.email;
+    document.getElementById("qp-user-nome").value = user.nome || "";
+    document.getElementById("qp-user-email").value = user.email || "";
+    document.getElementById("qp-user-email").disabled = true;
+    document.getElementById("qp-user-senha").value = "";
+    document.getElementById("qp-user-perfil").value = /admin/i.test(user.perfil || "") ? "Administrador" : "Atendente";
+    document.getElementById("qp-user-academia").checked = !!user.acessoAcademia;
+    document.getElementById("qp-user-bloqueado").checked = !!user.bloqueado;
+    document.getElementById("qp-user-form-title").textContent = "Editar: " + (user.nome || user.email);
+    document.getElementById("qp-user-save").textContent = "Salvar alterações";
+    document.getElementById("qp-user-cancel-edit").style.display = "";
+    var senhaLbl = document.querySelector('label[for="qp-user-senha"]');
+    if (senhaLbl) senhaLbl.textContent = "Nova senha (opcional)";
+    document.getElementById("qp-user-senha").placeholder = "Deixe em branco para manter a atual";
+  }
+
+  function loadAdminUsers() {
+    api({ action: "listUsers", email: state.session.email })
+      .then(function (res) {
+        if (res && res.ok) renderAdminUsers(res.users || []);
+        else renderAdminUsers([], adminActionError(res));
+      })
+      .catch(function () { renderAdminUsers([], "Falha de conexão."); });
+  }
+
+  function renderAdminUsers(users, errMsg) {
+    var list = document.getElementById("qp-users-list");
+    if (!list) return;
+    if (errMsg) { list.innerHTML = '<p class="qp-empty">' + esc(errMsg) + "</p>"; return; }
+    if (!users.length) { list.innerHTML = '<p class="qp-empty">Nenhum usuário cadastrado.</p>'; return; }
+
+    var selfEmail = (state.session.email || "").toLowerCase();
+    list.innerHTML =
+      '<div class="qp-users-table-wrap"><table class="qp-users-table">' +
+      "<thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Academia</th><th>Status</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>" +
+      users.map(function (u) {
+        var isSelf = (u.email || "").toLowerCase() === selfEmail;
+        var status = u.bloqueado
+          ? '<span class="qp-user-status qp-user-blocked">Bloqueado</span>'
+          : '<span class="qp-user-status qp-user-active">Ativo</span>';
+        var actions =
+          '<button type="button" class="qp-btn qp-btn-ghost qp-user-edit" data-email="' + esc(u.email) + '">Editar</button>';
+        if (!isSelf) {
+          actions += ' <button type="button" class="qp-btn qp-btn-danger qp-user-delete" data-email="' + esc(u.email) + '" data-nome="' + esc(u.nome || u.email) + '">Excluir</button>';
+        }
+        return "<tr>" +
+          "<td>" + esc(u.nome || "—") + "</td>" +
+          "<td>" + esc(u.email) + "</td>" +
+          "<td>" + esc(u.perfil || "Atendente") + "</td>" +
+          "<td>" + (u.acessoAcademia ? "Sim" : "Não") + "</td>" +
+          "<td>" + status + "</td>" +
+          "<td>" + esc(u.andamento || "0%") + "</td>" +
+          "<td class=\"qp-users-actions\">" + actions + "</td>" +
+          "</tr>";
+      }).join("") +
+      "</tbody></table></div>";
+
+    list.querySelectorAll(".qp-user-edit").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var email = btn.getAttribute("data-email");
+        var user = users.filter(function (u) { return u.email === email; })[0];
+        if (user) fillAdminUserForm(user);
+      });
+    });
+    list.querySelectorAll(".qp-user-delete").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var email = btn.getAttribute("data-email");
+        var nome = btn.getAttribute("data-nome");
+        deleteAdminUser(email, nome);
+      });
+    });
+  }
+
+  function saveAdminUser() {
+    var editEmail = (document.getElementById("qp-user-edit-email").value || "").trim();
+    var nome = (document.getElementById("qp-user-nome").value || "").trim();
+    var email = (document.getElementById("qp-user-email").value || "").trim();
+    var senha = document.getElementById("qp-user-senha").value || "";
+    var perfil = document.getElementById("qp-user-perfil").value;
+    var acessoAcademia = document.getElementById("qp-user-academia").checked;
+    var bloqueado = document.getElementById("qp-user-bloqueado").checked;
+
+    if (!nome || !email) { alert("Preencha nome e e-mail."); return; }
+
+    if (editEmail) {
+      withAdminPassword("Salvar alterações", "Confirme sua senha para atualizar " + nome + ".", function (adminSenha, done) {
+        var changes = { nome: nome, perfil: perfil, acessoAcademia: acessoAcademia, bloqueado: bloqueado };
+        if (senha) changes.senha = senha;
+        adminApi("updateUser", { targetEmail: editEmail, changes: changes }, adminSenha)
+          .then(function (res) {
+            if (res && res.ok) {
+              resetAdminUserForm();
+              loadAdminUsers();
+              done(true);
+            } else done(false, adminActionError(res));
+          })
+          .catch(function () { done(false, "Falha de conexão."); });
+      });
+      return;
+    }
+
+    if (!senha) { alert("Informe uma senha inicial para o novo atendente."); return; }
+
+    withAdminPassword("Cadastrar atendente", "Confirme sua senha para criar o usuário " + nome + ".", function (adminSenha, done) {
+      adminApi("createUser", {
+        user: { nome: nome, email: email, senha: senha, perfil: perfil, acessoAcademia: acessoAcademia, bloqueado: bloqueado }
+      }, adminSenha)
+        .then(function (res) {
+          if (res && res.ok) {
+            resetAdminUserForm();
+            loadAdminUsers();
+            done(true);
+          } else done(false, adminActionError(res));
+        })
+        .catch(function () { done(false, "Falha de conexão."); });
+    });
+  }
+
+  function deleteAdminUser(email, nome) {
+    if (!confirm("Excluir permanentemente o usuário \"" + nome + "\"?")) return;
+    withAdminPassword("Excluir usuário", "Confirme sua senha para excluir " + nome + ".", function (adminSenha, done) {
+      adminApi("deleteUser", { targetEmail: email }, adminSenha)
+        .then(function (res) {
+          if (res && res.ok) {
+            loadAdminUsers();
+            done(true);
+          } else done(false, adminActionError(res));
+        })
+        .catch(function () { done(false, "Falha de conexão."); });
+    });
   }
 
   // -------------------------------------------------- plugin Docsify
