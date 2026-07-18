@@ -12,7 +12,7 @@
 <meta http-equiv="Expires" content="0">
 
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-<link rel="stylesheet" href="assets/app.css?v=27">
+<link rel="stylesheet" href="assets/app.css?v=28">
 
 <style>
 
@@ -113,6 +113,44 @@ body{
 .sidebar-nav > ul > li > ul{
   margin:0 0 6px;
   padding-left:0;
+}
+
+/* Menu colapsável — subtópicos ocultos até clicar no tópico principal */
+.sidebar-nav > ul > li.qp-nav-group > ul{
+  display:none;
+}
+
+.sidebar-nav > ul > li.qp-nav-group.qp-nav-open > ul{
+  display:block;
+}
+
+.sidebar-nav > ul > li.qp-nav-group > p.qp-nav-toggle{
+  cursor:pointer;
+  user-select:none;
+  padding-right:22px!important;
+}
+
+.sidebar-nav > ul > li.qp-nav-group > p.qp-nav-toggle::after{
+  content:"";
+  position:absolute;
+  right:0;
+  top:50%;
+  margin-top:-3px;
+  border:5px solid transparent;
+  border-top-color:var(--qp-blue);
+  opacity:.45;
+  transition:transform .2s ease,opacity .2s ease;
+}
+
+.sidebar-nav > ul > li.qp-nav-group.qp-nav-open > p.qp-nav-toggle::after{
+  transform:rotate(180deg);
+  margin-top:-8px;
+  opacity:.7;
+}
+
+/* Evita duplicar subtópicos gerados automaticamente pelo Docsify */
+.sidebar-nav .app-sub-sidebar{
+  display:none!important;
 }
 
 .sidebar-nav > ul > li > ul > li > a{
@@ -438,14 +476,14 @@ Carregando Treinamento Quero Passagem...
   <img src="assets/mila.png" alt="Mila - Agente de Treinamento da Quero Passagem">
 </div>
 
-<script src="assets/config.js?v=27"></script>
+<script src="assets/config.js?v=28"></script>
 
 <script>
 window.$docsify = {
   name: 'Treinamento Quero Passagem',
   loadSidebar: true,
   auto2top: true,
-  subMaxLevel: 3,
+  subMaxLevel: 0,
 
   search: {
     maxAge:86400000,
@@ -456,7 +494,7 @@ window.$docsify = {
 }
 </script>
 
-<script src="assets/app.js?v=27"></script>
+<script src="assets/app.js?v=28"></script>
 
 <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
 <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>

@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "27";
+  var APP_VERSION = "28";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -516,6 +516,86 @@
           adminParent.style.display = isAdmin() ? "" : "none";
         }
       }
+    });
+  }
+
+  function setupCollapsibleSidebar() {
+    var root = document.querySelector(".sidebar-nav > ul");
+    if (!root) return;
+
+    Array.prototype.forEach.call(root.children, function (li) {
+      if (li.tagName !== "LI" || li.style.display === "none") return;
+      var heading = null;
+      var sub = null;
+      for (var i = 0; i < li.children.length; i++) {
+        if (li.children[i].tagName === "P") heading = li.children[i];
+        if (li.children[i].tagName === "UL") sub = li.children[i];
+      }
+      if (!heading || !sub) return;
+
+      li.classList.add("qp-nav-group");
+      heading.classList.add("qp-nav-toggle");
+      if (!heading.getAttribute("role")) {
+        heading.setAttribute("role", "button");
+        heading.setAttribute("tabindex", "0");
+        heading.setAttribute("aria-expanded", li.classList.contains("qp-nav-open") ? "true" : "false");
+      }
+    });
+  }
+
+  function syncCollapsibleSidebar() {
+    var root = document.querySelector(".sidebar-nav > ul");
+    if (!root) return;
+
+    setupCollapsibleSidebar();
+
+    var activeGroup = null;
+    Array.prototype.forEach.call(root.children, function (li) {
+      if (li.tagName === "LI" && li.querySelector(":scope > ul li.active")) activeGroup = li;
+    });
+
+    Array.prototype.forEach.call(root.querySelectorAll(":scope > li.qp-nav-group"), function (li) {
+      if (li.style.display === "none") return;
+      var open = li === activeGroup;
+      li.classList.toggle("qp-nav-open", open);
+      var heading = li.querySelector(":scope > p.qp-nav-toggle");
+      if (heading) heading.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+
+  function bindCollapsibleSidebar() {
+    var nav = document.querySelector(".sidebar-nav");
+    if (!nav || nav.dataset.qpNavBound) return;
+    nav.dataset.qpNavBound = "1";
+
+    function toggleGroup(heading) {
+      var li = heading.parentElement;
+      if (!li || !li.classList.contains("qp-nav-group")) return;
+      var willOpen = !li.classList.contains("qp-nav-open");
+      nav.querySelectorAll(":scope > ul > li.qp-nav-group").forEach(function (item) {
+        item.classList.remove("qp-nav-open");
+        var h = item.querySelector(":scope > p.qp-nav-toggle");
+        if (h) h.setAttribute("aria-expanded", "false");
+      });
+      if (willOpen) {
+        li.classList.add("qp-nav-open");
+        heading.setAttribute("aria-expanded", "true");
+      }
+    }
+
+    nav.addEventListener("click", function (e) {
+      var heading = e.target.closest("li.qp-nav-group > p.qp-nav-toggle");
+      if (!heading || !nav.contains(heading)) return;
+      e.preventDefault();
+      toggleGroup(heading);
+    });
+
+    nav.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var heading = e.target.closest("li.qp-nav-group > p.qp-nav-toggle");
+      if (!heading || !nav.contains(heading)) return;
+      e.preventDefault();
+      toggleGroup(heading);
     });
   }
 
@@ -1953,12 +2033,21 @@
 
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
-    hook.doneEach(function () { ensureTopbar(); ensureSidebarAuth(); renderPage(); applySidebarRestrictions(); });
+    hook.doneEach(function () {
+      ensureTopbar();
+      ensureSidebarAuth();
+      renderPage();
+      applySidebarRestrictions();
+      syncCollapsibleSidebar();
+    });
     hook.ready(function () {
+      bindCollapsibleSidebar();
+      syncCollapsibleSidebar();
       window.addEventListener("hashchange", function () {
         applySidebarRestrictions();
         ensureSidebarAuth();
         renderPage();
+        syncCollapsibleSidebar();
       });
     });
   }
