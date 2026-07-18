@@ -678,3 +678,168 @@ body.qp-portal-locked #mila-float{ visibility:hidden; }
   font-size:.9rem;
   color:#5a4b00;
 }
+
+/* ---------- Mila — chat flutuante ---------- */
+.qp-mila-chat{
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  width:min(380px, calc(100vw - 32px));
+  max-height:min(520px, calc(100vh - 120px));
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 16px 48px rgba(0,0,0,.22);
+  z-index:10001;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(16px) scale(.96);
+  transition:opacity .25s ease, transform .25s ease, visibility .25s;
+}
+.qp-mila-chat.qp-open{
+  opacity:1;
+  visibility:visible;
+  transform:translateY(0) scale(1);
+}
+.qp-mila-chat-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 16px;
+  background:linear-gradient(135deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+  color:#fff;
+}
+.qp-mila-chat-header img{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  border:2px solid var(--qp-yellow);
+  object-fit:cover;
+  object-position:55% 12%;
+  flex-shrink:0;
+}
+.qp-mila-chat-title{
+  flex:1;
+  min-width:0;
+}
+.qp-mila-chat-title strong{
+  display:block;
+  font-size:1rem;
+  line-height:1.2;
+}
+.qp-mila-chat-title span{
+  font-size:.75rem;
+  opacity:.9;
+}
+.qp-mila-chat-close{
+  background:rgba(255,255,255,.15);
+  border:0;
+  color:#fff;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  font-size:1.4rem;
+  line-height:1;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.qp-mila-chat-close:hover{ background:rgba(255,255,255,.28); }
+.qp-mila-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:14px;
+  background:#f5f7fa;
+  min-height:220px;
+  max-height:340px;
+}
+.qp-mila-msg{
+  margin-bottom:10px;
+  display:flex;
+}
+.qp-mila-msg-mila{ justify-content:flex-start; }
+.qp-mila-msg-user{ justify-content:flex-end; }
+.qp-mila-msg-body{
+  max-width:88%;
+  padding:10px 13px;
+  border-radius:14px;
+  font-size:.9rem;
+  line-height:1.45;
+  white-space:pre-wrap;
+}
+.qp-mila-msg-mila .qp-mila-msg-body{
+  background:#fff;
+  border:1px solid #e8e8ed;
+  color:#333;
+  border-bottom-left-radius:4px;
+}
+.qp-mila-msg-user .qp-mila-msg-body{
+  background:linear-gradient(135deg,var(--qp-mila-blue),var(--qp-mila-blue-light));
+  color:#fff;
+  border-bottom-right-radius:4px;
+}
+.qp-mila-typing .qp-mila-msg-body{
+  color:#8a94a2;
+  font-style:italic;
+}
+.qp-mila-sugestoes{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:8px;
+  max-width:88%;
+}
+.qp-mila-sugestao{
+  text-align:left;
+  background:#fff;
+  border:1px solid #d7dbe0;
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:.8rem;
+  color:var(--qp-blue);
+  cursor:pointer;
+  transition:border-color .2s, background .2s;
+}
+.qp-mila-sugestao:hover{
+  border-color:var(--qp-mila-blue);
+  background:#f0f6ff;
+}
+.qp-mila-input-row{
+  display:flex;
+  gap:8px;
+  padding:12px;
+  border-top:1px solid #e8e8ed;
+  background:#fff;
+  align-items:flex-end;
+}
+.qp-mila-input-row textarea{
+  flex:1;
+  resize:none;
+  border:1px solid #d7dbe0;
+  border-radius:10px;
+  padding:10px 12px;
+  font:inherit;
+  font-size:.9rem;
+  min-height:44px;
+}
+.qp-mila-input-row textarea:focus{
+  outline:none;
+  border-color:var(--qp-mila-blue);
+}
+.qp-mila-input-row .qp-btn{
+  flex-shrink:0;
+  padding:10px 16px;
+}
+#mila-float.qp-mila-open{
+  transform:scale(1.05);
+  box-shadow:0 10px 28px rgba(0,80,184,.45);
+}
+@media (max-width:480px){
+  .qp-mila-chat{
+    right:12px;
+    left:12px;
+    width:auto;
+    bottom:12px;
+  }
+}

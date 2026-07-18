@@ -61,6 +61,11 @@ function doPost(e) {
       case "getDuvidas":  return json(handleGetDuvidas(req));
       case "addDuvida":   return json(handleAddDuvida(req));
       case "answerDuvida":return json(handleAnswerDuvida(req));
+      case "askMila":       return json(handleAskMila(req));
+      case "getMilaFaq":    return json(handleGetMilaFaq(req));
+      case "addMilaFaq":    return json(handleAddMilaFaq(req));
+      case "updateMilaFaq": return json(handleUpdateMilaFaq(req));
+      case "deleteMilaFaq": return json(handleDeleteMilaFaq(req));
       case "getDesafio":    return json(handleGetDesafio(req));
       case "addDesafioPergunta": return json(handleAddDesafioPergunta(req));
       case "submitDesafioResposta": return json(handleSubmitDesafioResposta(req));
@@ -738,6 +743,184 @@ function handleAnswerDuvida(req) {
     }
   }
   return { ok: false, message: "Dúvida não encontrada" };
+}
+
+/* ---------------- Mila — atendente virtual (FAQ) ---------------- */
+var MILA_FAQ_HEADERS = ["ID", "PERGUNTA", "RESPOSTA", "PALAVRAS_CHAVE", "ATIVO", "CRIADO_POR", "CRIADO_EM"];
+var MILA_STOP_WORDS = ["a","o","e","de","da","do","das","dos","em","um","uma","uns","umas","os","as","que","com","por","para","no","na","nos","nas","eu","voce","como","qual","quais","me","minha","meu","se","sua","seu","ao","aos","e","ou","ja","mais","muito","pouco","ser","esta","este","isso","essa","esse"];
+
+function milaFaqSheet() { return ensureSheet("MilaFAQ", MILA_FAQ_HEADERS); }
+
+function milaNormalize(s) {
+  return stripAccents(norm(s)).toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function milaTokens(s) {
+  var parts = milaNormalize(s).split(" ");
+  var out = [];
+  var i, w;
+  for (i = 0; i < parts.length; i++) {
+    w = parts[i];
+    if (w.length >= 2 && MILA_STOP_WORDS.indexOf(w) < 0) out.push(w);
+  }
+  return out;
+}
+
+function parseMilaFaqRow(row) {
+  return {
+    id: norm(row[0]),
+    pergunta: norm(row[1]),
+    resposta: norm(row[2]),
+    palavrasChave: norm(row[3]),
+    ativo: isSim(row[4]),
+    criadoPor: norm(row[5]),
+    criadoEm: norm(row[6])
+  };
+}
+
+function listMilaFaq(onlyActive) {
+  var data = milaFaqSheet().getDataRange().getValues();
+  var out = [];
+  var i, item;
+  for (i = 1; i < data.length; i++) {
+    item = parseMilaFaqRow(data[i]);
+    if (!item.id || !item.pergunta) continue;
+    if (onlyActive && !item.ativo) continue;
+    out.push(item);
+  }
+  return out;
+}
+
+function findMilaFaqRow(id) {
+  var data = milaFaqSheet().getDataRange().getValues();
+  var target = norm(id);
+  var i;
+  for (i = 1; i < data.length; i++) {
+    if (norm(data[i][0]) === target) return i + 1;
+  }
+  return -1;
+}
+
+function milaScore(userQ, faq) {
+  var u = milaNormalize(userQ);
+  var p = milaNormalize(faq.pergunta);
+  var score = 0;
+  var userTokens, faqTokens, matches, i, j, k, key, keys;
+
+  if (!u || !p) return 0;
+  if (u === p) return 100;
+  if (p.indexOf(u) >= 0 || u.indexOf(p) >= 0) return 88;
+
+  if (faq.palavrasChave) {
+    keys = faq.palavrasChave.split(/[,;|]/);
+    for (k = 0; k < keys.length; k++) {
+      key = milaNormalize(keys[k]);
+      if (key && (u === key || u.indexOf(key) >= 0 || key.indexOf(u) >= 0)) score = Math.max(score, 82);
+    }
+  }
+
+  userTokens = milaTokens(userQ);
+  faqTokens = milaTokens(faq.pergunta + " " + (faq.palavrasChave || ""));
+  if (!userTokens.length || !faqTokens.length) return score;
+
+  matches = 0;
+  for (i = 0; i < userTokens.length; i++) {
+    for (j = 0; j < faqTokens.length; j++) {
+      if (userTokens[i] === faqTokens[j]) { matches++; break; }
+      if (userTokens[i].length >= 4 && faqTokens[j].indexOf(userTokens[i]) >= 0) { matches += 0.85; break; }
+      if (faqTokens[j].length >= 4 && userTokens[i].indexOf(faqTokens[j]) >= 0) { matches += 0.85; break; }
+    }
+  }
+  score = Math.max(score, Math.round((matches / userTokens.length) * 75));
+  return Math.min(100, score);
+}
+
+function handleAskMila(req) {
+  var auth = requireAuth(req);
+  if (!auth.ok) return auth;
+  var pergunta = norm(req.pergunta);
+  if (!pergunta) return { ok: false, message: "Digite uma pergunta" };
+
+  var faqs = listMilaFaq(true);
+  var best = null;
+  var bestScore = 0;
+  var suggestions = [];
+  var i, sc, item;
+
+  for (i = 0; i < faqs.length; i++) {
+    sc = milaScore(pergunta, faqs[i]);
+    if (sc > bestScore) { bestScore = sc; best = faqs[i]; }
+    if (sc >= 28) suggestions.push({ pergunta: faqs[i].pergunta, score: sc });
+  }
+  suggestions.sort(function (a, b) { return b.score - a.score; });
+
+  if (best && bestScore >= 42) {
+    return {
+      ok: true,
+      resposta: best.resposta,
+      perguntaBase: best.pergunta,
+      score: bestScore,
+      matchId: best.id
+    };
+  }
+
+  return {
+    ok: true,
+    semMatch: true,
+    resposta: "Hmm, não encontrei uma resposta exata para isso na minha base. Tente reformular ou toque em uma sugestão abaixo. Você também pode usar a Central de Dúvidas para falar com a liderança! 🙂",
+    sugestoes: suggestions.slice(0, 4).map(function (s) { return s.pergunta; })
+  };
+}
+
+function handleGetMilaFaq(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  return { ok: true, faq: listMilaFaq(false) };
+}
+
+function handleAddMilaFaq(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  var pergunta = norm(req.pergunta);
+  var resposta = norm(req.resposta);
+  if (!pergunta || !resposta) return { ok: false, message: "Pergunta e resposta são obrigatórias" };
+  var id = "M" + new Date().getTime();
+  milaFaqSheet().appendRow([
+    id, pergunta, resposta, norm(req.palavrasChave),
+    req.ativo === false ? "NAO" : "SIM",
+    cell(auth.user, "nome"), new Date().toISOString()
+  ]);
+  return { ok: true, id: id };
+}
+
+function handleUpdateMilaFaq(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  var id = norm(req.id);
+  if (!id) return { ok: false, message: "ID inválido" };
+  var row = findMilaFaqRow(id);
+  if (row < 0) return { ok: false, message: "Pergunta não encontrada" };
+  var changes = req.changes || {};
+  var sh = milaFaqSheet();
+  if (changes.pergunta != null) sh.getRange(row, 2).setValue(norm(changes.pergunta));
+  if (changes.resposta != null) sh.getRange(row, 3).setValue(norm(changes.resposta));
+  if (changes.palavrasChave != null) sh.getRange(row, 4).setValue(norm(changes.palavrasChave));
+  if (changes.ativo != null) sh.getRange(row, 5).setValue(changes.ativo ? "SIM" : "NAO");
+  return { ok: true };
+}
+
+function handleDeleteMilaFaq(req) {
+  var auth = requireAdmin(req);
+  if (!auth.ok) return auth;
+  var id = norm(req.id);
+  if (!id) return { ok: false, message: "ID inválido" };
+  var row = findMilaFaqRow(id);
+  if (row < 0) return { ok: false, message: "Pergunta não encontrada" };
+  milaFaqSheet().deleteRow(row);
+  return { ok: true };
 }
 
 /* ---------------- Desafio do Dia (quiz) ---------------- */

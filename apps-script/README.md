@@ -45,7 +45,7 @@ então a ordem não importa e colunas extras são ignoradas. Cabeçalhos reconhe
 - **Senha forte recomendada**: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 símbolo. Logins com senha
   fraca exibem opção de troca imediata no portal (`changePassword`).
 
-As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes**, **LoginTentativas**, **Informativos**, **InformativoLeituras** e **InformativoComentarios** são criadas automaticamente.
+As abas **Progresso**, **Comentarios**, **Conteudo**, **Sessoes**, **LoginTentativas**, **Informativos**, **InformativoLeituras**, **InformativoComentarios** e **MilaFAQ** são criadas automaticamente.
 
 ## Segurança
 
@@ -85,6 +85,11 @@ também exigem `email` correspondente à sessão.
 | `addInformativo` | email, sessionToken, titulo, texto, anexoTipo? (`imagem`\|`pdf`\|`video`), anexoValor? (foto data URI ou URL de vídeo), anexoBase64? + anexoMime? + anexoNome? (PDF/arquivo de vídeo → salvo no Google Drive) | `{ok, id}` (só admin) |
 | `markInformativoRead` | email, sessionToken, informativoId | `{ok}` ou `{ok, jaLido:true}` — atendentes e backoffice confirmam leitura |
 | `addInformativoComment` | email, sessionToken, informativoId, texto | `{ok, id}` |
+| `askMila` | email, sessionToken, pergunta | `{ok, resposta, perguntaBase?, score?, semMatch?, sugestoes?}` — busca na base `MilaFAQ` |
+| `getMilaFaq` | email, sessionToken | `{ok, faq:[...]}` (só admin) |
+| `addMilaFaq` | email, sessionToken, pergunta, resposta, palavrasChave?, ativo? | `{ok, id}` (só admin) |
+| `updateMilaFaq` | email, sessionToken, id, changes `{pergunta?, resposta?, palavrasChave?, ativo?}` | `{ok}` (só admin) |
+| `deleteMilaFaq` | email, sessionToken, id | `{ok}` (só admin) |
 
 Usuários bloqueados (`BLOQUEADO = SIM` na planilha) não conseguem fazer login. A coluna `BLOQUEADO` é criada automaticamente na primeira gestão pelo portal.
 

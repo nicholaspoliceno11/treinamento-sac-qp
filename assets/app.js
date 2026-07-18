@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "20";
+  var APP_VERSION = "21";
 
   // Tópicos que contam para a barra de progresso (rota -> título)
   var TOPICS = [
@@ -28,6 +28,8 @@
     accessResolved: false, // true após login/hydrate confirmarem acesso na API
     pendingWeakPassword: null // senha usada no login (para troca obrigatória opcional)
   };
+  var milaChatOpen = false;
+  var milaGreeted = false;
 
   // -------------------------------------------------- utilidades
   function getApiUrl() {
@@ -499,6 +501,7 @@
         return;
       }
       var isAdminNav = !!li.querySelector('a[href*="admin-usuarios"]') ||
+        !!li.querySelector('a[href*="admin-mila"]') ||
         /administra/i.test(((li.querySelector("p, strong") || {}).textContent || ""));
       if (isAdminNav) {
         li.style.display = isAdmin() ? "" : "none";
@@ -535,7 +538,7 @@
     if (!apiConfigured() || !state.session) return false;
     var topic = currentTopic();
     var blocked = document.getElementById("qp-restricted");
-    if (topic === "admin-usuarios" && !isAdmin()) {
+    if ((topic === "admin-usuarios" || topic === "admin-mila") && !isAdmin()) {
       section.classList.add("qp-backoffice-blocked");
       Array.from(section.children).forEach(function (el) {
         if (el.id !== "qp-restricted" && el.id !== "qp-topbar" && el.id !== "qp-injected") {
@@ -598,6 +601,7 @@
     refreshProgressUI();
     ensureTopbar();
     ensureWeakPasswordBanner();
+    refreshMilaWidget();
     renderPage();
   }
 
@@ -650,6 +654,13 @@
       if (isAdmin()) wrap.appendChild(buildAdminUsersSection());
       section.appendChild(wrap);
       if (isAdmin()) loadAdminUsers();
+      return;
+    }
+
+    if (topic === "admin-mila") {
+      if (isAdmin()) wrap.appendChild(buildAdminMilaSection());
+      section.appendChild(wrap);
+      if (isAdmin()) loadAdminMila();
       return;
     }
 
@@ -1650,6 +1661,277 @@
     });
   }
 
+  // -------- Mila — atendente virtual (chat)
+  function ensureMilaChat() {
+    if (document.getElementById("qp-mila-chat")) return;
+    var panel = document.createElement("div");
+    panel.id = "qp-mila-chat";
+    panel.className = "qp-mila-chat";
+    panel.setAttribute("aria-hidden", "true");
+    panel.innerHTML =
+      '<div class="qp-mila-chat-header">' +
+      '  <img src="assets/mila.png" alt="Mila">' +
+      '  <div class="qp-mila-chat-title">' +
+      '    <strong>Mila</strong>' +
+      '    <span>Agente de Treinamento</span>' +
+      '  </div>' +
+      '  <button type="button" class="qp-mila-chat-close" id="qp-mila-close" aria-label="Fechar">×</button>' +
+      '</div>' +
+      '<div class="qp-mila-messages" id="qp-mila-messages"></div>' +
+      '<div class="qp-mila-input-row">' +
+      '  <textarea id="qp-mila-input" rows="2" placeholder="Digite sua dúvida…"></textarea>' +
+      '  <button type="button" class="qp-btn qp-btn-primary" id="qp-mila-send">Enviar</button>' +
+      '</div>';
+    document.body.appendChild(panel);
+
+    panel.querySelector("#qp-mila-close").addEventListener("click", closeMilaChat);
+    panel.querySelector("#qp-mila-send").addEventListener("click", function () { sendMilaQuestion(); });
+    panel.querySelector("#qp-mila-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMilaQuestion(); }
+    });
+
+    var floatBtn = document.getElementById("mila-float");
+    if (floatBtn) {
+      floatBtn.addEventListener("click", function () {
+        if (!apiConfigured() || !state.session) return;
+        if (milaChatOpen) closeMilaChat();
+        else openMilaChat();
+      });
+    }
+  }
+
+  function refreshMilaWidget() {
+    ensureMilaChat();
+    var floatBtn = document.getElementById("mila-float");
+    var panel = document.getElementById("qp-mila-chat");
+    var active = apiConfigured() && !!state.session;
+    if (floatBtn) floatBtn.style.display = active ? "" : "none";
+    if (!active) {
+      closeMilaChat();
+      milaGreeted = false;
+      if (panel) {
+        var msgs = panel.querySelector("#qp-mila-messages");
+        if (msgs) msgs.innerHTML = "";
+      }
+    }
+  }
+
+  function openMilaChat() {
+    ensureMilaChat();
+    if (!state.session) return;
+    var panel = document.getElementById("qp-mila-chat");
+    if (!panel) return;
+    milaChatOpen = true;
+    panel.classList.add("qp-open");
+    panel.setAttribute("aria-hidden", "false");
+    var floatBtn = document.getElementById("mila-float");
+    if (floatBtn) floatBtn.classList.add("qp-mila-open");
+    if (!milaGreeted) {
+      milaGreeted = true;
+      appendMilaMessage("mila",
+        "Olá" + (state.session.nome ? ", " + state.session.nome.split(" ")[0] : "") +
+        "! Eu sou a Mila 👋\n\nSou sua agente de treinamento virtual. Pergunte sobre procedimentos, regras ou o portal que eu te ajudo com base na nossa base de conhecimento!");
+    }
+    var input = document.getElementById("qp-mila-input");
+    if (input) input.focus();
+  }
+
+  function closeMilaChat() {
+    milaChatOpen = false;
+    var panel = document.getElementById("qp-mila-chat");
+    if (panel) {
+      panel.classList.remove("qp-open");
+      panel.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  function appendMilaMessage(role, text, extras) {
+    var box = document.getElementById("qp-mila-messages");
+    if (!box) return;
+    var el = document.createElement("div");
+    el.className = "qp-mila-msg qp-mila-msg-" + (role === "user" ? "user" : "mila");
+    var body = '<div class="qp-mila-msg-body">' + esc(text).replace(/\n/g, "<br>") + "</div>";
+    if (extras && extras.sugestoes && extras.sugestoes.length) {
+      body += '<div class="qp-mila-sugestoes">' + extras.sugestoes.map(function (s) {
+        return '<button type="button" class="qp-mila-sugestao" data-q="' + esc(s) + '">' + esc(s) + "</button>";
+      }).join("") + "</div>";
+    }
+    el.innerHTML = body;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+    el.querySelectorAll(".qp-mila-sugestao").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        sendMilaQuestion(btn.getAttribute("data-q"));
+      });
+    });
+  }
+
+  function sendMilaQuestion(prefill) {
+    if (!state.session) return;
+    var input = document.getElementById("qp-mila-input");
+    var btn = document.getElementById("qp-mila-send");
+    var pergunta = String(prefill != null ? prefill : (input && input.value || "")).trim();
+    if (!pergunta) return;
+
+    if (input && prefill == null) input.value = "";
+    appendMilaMessage("user", pergunta);
+    if (btn) btn.disabled = true;
+
+    var typing = document.createElement("div");
+    typing.className = "qp-mila-msg qp-mila-msg-mila qp-mila-typing";
+    typing.innerHTML = '<div class="qp-mila-msg-body">Mila está digitando…</div>';
+    var box = document.getElementById("qp-mila-messages");
+    if (box) { box.appendChild(typing); box.scrollTop = box.scrollHeight; }
+
+    api({ action: "askMila", email: state.session.email, pergunta: pergunta })
+      .then(function (res) {
+        if (typing.parentNode) typing.parentNode.removeChild(typing);
+        if (res && res.ok) {
+          appendMilaMessage("mila", res.resposta || "Não consegui responder agora.", {
+            sugestoes: res.semMatch ? (res.sugestoes || []) : []
+          });
+        } else {
+          appendMilaMessage("mila", (res && res.message) || "Não consegui consultar a base agora. Tente novamente em instantes.");
+        }
+      })
+      .catch(function () {
+        if (typing.parentNode) typing.parentNode.removeChild(typing);
+        appendMilaMessage("mila", "Falha de conexão. Verifique sua internet e tente de novo.");
+      })
+      .then(function () { if (btn) btn.disabled = false; });
+  }
+
+  function buildAdminMilaSection() {
+    var sec = document.createElement("div");
+    sec.className = "qp-section qp-admin-mila";
+    sec.innerHTML =
+      '<h3 class="qp-section-title">Base de conhecimento da Mila</h3>' +
+      '<p class="qp-hint">Cadastre perguntas e respostas que a Mila usa para responder automaticamente no chat. Use <strong>palavras-chave</strong> (separadas por vírgula) para melhorar o reconhecimento.</p>' +
+      '<div id="qp-mila-faq-list"><p class="qp-empty">Carregando…</p></div>' +
+      '<div class="qp-form qp-mila-faq-form">' +
+      '  <h4 id="qp-mila-faq-form-title">Nova pergunta</h4>' +
+      '  <input type="hidden" id="qp-mila-faq-edit-id" value="">' +
+      '  <label for="qp-mila-faq-pergunta">Pergunta (como o atendente pode perguntar)</label>' +
+      '  <input id="qp-mila-faq-pergunta" type="text" placeholder="Ex.: Como funciona o reembolso por PIX?">' +
+      '  <label for="qp-mila-faq-resposta">Resposta da Mila</label>' +
+      '  <textarea id="qp-mila-faq-resposta" rows="4" placeholder="Texto que a Mila vai responder…"></textarea>' +
+      '  <label for="qp-mila-faq-chaves">Palavras-chave (opcional)</label>' +
+      '  <input id="qp-mila-faq-chaves" type="text" placeholder="pix, reembolso, estorno, devolução">' +
+      '  <label class="qp-check"><input id="qp-mila-faq-ativo" type="checkbox" checked> Ativa (visível para a Mila)</label>' +
+      '  <div class="qp-row">' +
+      '    <button type="button" class="qp-btn qp-btn-primary" id="qp-mila-faq-save">Salvar pergunta</button>' +
+      '    <button type="button" class="qp-btn qp-btn-ghost" id="qp-mila-faq-cancel" style="display:none">Cancelar edição</button>' +
+      '  </div>' +
+      '</div>';
+    sec.querySelector("#qp-mila-faq-save").addEventListener("click", saveAdminMilaFaq);
+    sec.querySelector("#qp-mila-faq-cancel").addEventListener("click", resetAdminMilaForm);
+    return sec;
+  }
+
+  function resetAdminMilaForm() {
+    document.getElementById("qp-mila-faq-edit-id").value = "";
+    document.getElementById("qp-mila-faq-pergunta").value = "";
+    document.getElementById("qp-mila-faq-resposta").value = "";
+    document.getElementById("qp-mila-faq-chaves").value = "";
+    document.getElementById("qp-mila-faq-ativo").checked = true;
+    document.getElementById("qp-mila-faq-form-title").textContent = "Nova pergunta";
+    document.getElementById("qp-mila-faq-save").textContent = "Salvar pergunta";
+    document.getElementById("qp-mila-faq-cancel").style.display = "none";
+  }
+
+  function fillAdminMilaForm(item) {
+    document.getElementById("qp-mila-faq-edit-id").value = item.id;
+    document.getElementById("qp-mila-faq-pergunta").value = item.pergunta || "";
+    document.getElementById("qp-mila-faq-resposta").value = item.resposta || "";
+    document.getElementById("qp-mila-faq-chaves").value = item.palavrasChave || "";
+    document.getElementById("qp-mila-faq-ativo").checked = !!item.ativo;
+    document.getElementById("qp-mila-faq-form-title").textContent = "Editar pergunta";
+    document.getElementById("qp-mila-faq-save").textContent = "Salvar alterações";
+    document.getElementById("qp-mila-faq-cancel").style.display = "";
+  }
+
+  function loadAdminMila() {
+    api({ action: "getMilaFaq", email: state.session.email })
+      .then(function (res) {
+        if (res && res.ok) renderAdminMila(res.faq || []);
+        else renderAdminMila([], adminActionError(res));
+      })
+      .catch(function () { renderAdminMila([], "Falha de conexão."); });
+  }
+
+  function renderAdminMila(items, errMsg) {
+    var list = document.getElementById("qp-mila-faq-list");
+    if (!list) return;
+    if (errMsg) { list.innerHTML = '<p class="qp-empty">' + esc(errMsg) + "</p>"; return; }
+    if (!items.length) { list.innerHTML = '<p class="qp-empty">Nenhuma pergunta cadastrada. A Mila ainda não tem base de conhecimento.</p>'; return; }
+
+    list.innerHTML =
+      '<div class="qp-mila-faq-table-wrap"><table class="qp-users-table qp-mila-faq-table">' +
+      "<thead><tr><th>Pergunta</th><th>Palavras-chave</th><th>Status</th><th>Ações</th></tr></thead><tbody>" +
+      items.map(function (item) {
+        var status = item.ativo
+          ? '<span class="qp-user-status qp-user-active">Ativa</span>'
+          : '<span class="qp-user-status qp-user-blocked">Inativa</span>';
+        return "<tr>" +
+          "<td>" + esc(item.pergunta) + "</td>" +
+          "<td>" + esc(item.palavrasChave || "—") + "</td>" +
+          "<td>" + status + "</td>" +
+          '<td class="qp-users-actions">' +
+          '<button type="button" class="qp-btn qp-btn-ghost qp-mila-faq-edit" data-id="' + esc(item.id) + '">Editar</button> ' +
+          '<button type="button" class="qp-btn qp-btn-danger qp-mila-faq-delete" data-id="' + esc(item.id) + '">Excluir</button>' +
+          "</td></tr>";
+      }).join("") +
+      "</tbody></table></div>";
+
+    list.querySelectorAll(".qp-mila-faq-edit").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-id");
+        var item = items.filter(function (f) { return f.id === id; })[0];
+        if (item) fillAdminMilaForm(item);
+      });
+    });
+    list.querySelectorAll(".qp-mila-faq-delete").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        deleteAdminMilaFaq(btn.getAttribute("data-id"));
+      });
+    });
+  }
+
+  function saveAdminMilaFaq() {
+    var editId = (document.getElementById("qp-mila-faq-edit-id").value || "").trim();
+    var pergunta = (document.getElementById("qp-mila-faq-pergunta").value || "").trim();
+    var resposta = (document.getElementById("qp-mila-faq-resposta").value || "").trim();
+    var palavrasChave = (document.getElementById("qp-mila-faq-chaves").value || "").trim();
+    var ativo = document.getElementById("qp-mila-faq-ativo").checked;
+    if (!pergunta || !resposta) { alert("Preencha pergunta e resposta."); return; }
+
+    var btn = document.getElementById("qp-mila-faq-save");
+    btn.disabled = true;
+    var payload = editId
+      ? { action: "updateMilaFaq", email: state.session.email, id: editId, changes: { pergunta: pergunta, resposta: resposta, palavrasChave: palavrasChave, ativo: ativo } }
+      : { action: "addMilaFaq", email: state.session.email, pergunta: pergunta, resposta: resposta, palavrasChave: palavrasChave, ativo: ativo };
+
+    api(payload)
+      .then(function (res) {
+        if (res && res.ok) {
+          resetAdminMilaForm();
+          loadAdminMila();
+        } else alert(adminActionError(res));
+      })
+      .catch(function () { alert("Falha de conexão."); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  function deleteAdminMilaFaq(id) {
+    if (!id || !confirm("Excluir esta pergunta da base da Mila?")) return;
+    api({ action: "deleteMilaFaq", email: state.session.email, id: id })
+      .then(function (res) {
+        if (res && res.ok) loadAdminMila();
+        else alert(adminActionError(res));
+      })
+      .catch(function () { alert("Falha de conexão."); });
+  }
+
   // -------------------------------------------------- plugin Docsify
   function plugin(hook) {
     hook.doneEach(function () { ensureTopbar(); ensureSidebarAuth(); renderPage(); applySidebarRestrictions(); });
@@ -1674,6 +1956,7 @@
       return;
     }
     bindOverlay();
+    ensureMilaChat();
     loadSession();
     showOverlay(true);
     refreshUI();

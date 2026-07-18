@@ -27,3 +27,4 @@
 
 * 👥 Administração
   * [Gerenciar Atendentes](admin-usuarios.md)
+  * [Base da Mila](admin-mila.md)
