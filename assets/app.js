@@ -1743,6 +1743,8 @@
       panel.classList.remove("qp-open");
       panel.setAttribute("aria-hidden", "true");
     }
+    var floatBtn = document.getElementById("mila-float");
+    if (floatBtn) floatBtn.classList.remove("qp-mila-open");
   }
 
   function appendMilaMessage(role, text, extras) {
