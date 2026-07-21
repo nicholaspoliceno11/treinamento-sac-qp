@@ -9,6 +9,7 @@ Docsify fetches the Markdown over HTTP, so you must serve the folder over HTTP â
 
 - Recommended (live reload): `docsify serve . --port 3000` then open `http://localhost:3000`.
   - `docsify-cli` is installed to `~/.npm-global/bin` and added to `PATH` via `~/.bashrc` (the update script reinstalls it idempotently). If `docsify` is not found, run `export PATH="$HOME/.npm-global/bin:$PATH"`.
+ - Because a custom npm `prefix` is set, shells print a harmless `nvm ... incompatible with nvm` warning on startup. It is cosmetic â€” `node` and `docsify` still resolve correctly; ignore it.
 - Zero-dependency fallback (no install needed): `python3 -m http.server 3000` from `/workspace`.
 
 ### Non-obvious caveats
